@@ -834,6 +834,17 @@ function esc(str) {
   if (str === null || str === undefined) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+// Only allow https: links out to job postings \u2014 guards against a malformed
+// or malicious upstream jobUrl value using a non-web scheme (e.g. javascript:).
+function safeExternalUrl(value) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' ? url.href : null;
+  } catch (e) {
+    return null;
+  }
+}
 function avatarColor(name) {
   let sum = 0;
   for (let i = 0; i < name.length; i++) sum += name.charCodeAt(i);
@@ -1419,6 +1430,20 @@ function exportCompanies() {
   showToast('Company list exported.');
 }
 
+// Guarantees the shape downstream code assumes (e.g. saved.include.length in
+// getFiltered()) regardless of what a hand-edited or corrupted imported file
+// actually contains. Returns null for anything unusable, so the caller can
+// just skip it rather than importing a filter that later crashes a render.
+function normalizeSavedFilter(f) {
+  if (!f || typeof f !== 'object') return null;
+  if (typeof f.name !== 'string' || !f.name.trim()) return null;
+  return {
+    name: f.name.slice(0, 100),
+    include: Array.isArray(f.include) ? f.include.filter(x => typeof x === 'string').slice(0, 100) : [],
+    exclude: Array.isArray(f.exclude) ? f.exclude.filter(x => typeof x === 'string').slice(0, 100) : [],
+  };
+}
+
 function importCompanies(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -1429,7 +1454,13 @@ function importCompanies(file) {
       const validCount = list.filter(c => (typeof c === 'string' && c) || (c && typeof c === 'object' && c.slug)).length;
       if (!confirm(`Import ${validCount} companies? This merges with your current list.`)) return;
       if (parsed.savedFilters && Array.isArray(parsed.savedFilters)) {
-        parsed.savedFilters.forEach(f => { if (!savedFilters.some(sf => sf.name === f.name)) savedFilters.push(f); });
+        let skipped = 0;
+        parsed.savedFilters.forEach(raw => {
+          const f = normalizeSavedFilter(raw);
+          if (!f) { skipped++; return; }
+          if (!savedFilters.some(sf => sf.name === f.name)) savedFilters.push(f);
+        });
+        if (skipped > 0) showToast(`Skipped ${skipped} malformed saved filter${skipped === 1 ? '' : 's'} in the imported file.`);
       }
       // Pass full records through (not just slugs) so provenance from richer
       // exports/discovery-script output survives the import.
@@ -2199,10 +2230,11 @@ function renderJobs(jobs) {
 
     const footer = document.createElement('div');
     footer.className = 'job-card-footer';
-    if (j.status !== 'closed' && j.jobUrl) {
+    const safeJobUrl = safeExternalUrl(j.jobUrl);
+    if (j.status !== 'closed' && safeJobUrl) {
       const link = document.createElement('a');
       link.className = 'job-link';
-      link.href = j.jobUrl;
+      link.href = safeJobUrl;
       link.target = '_blank';
       link.rel = 'noopener noreferrer';
       link.textContent = 'View posting';
@@ -2236,7 +2268,7 @@ function renderJobs(jobs) {
 
 function safeCSVCell(value) {
   let text = String(value ?? '');
-  if (/^[=+\-@]/.test(text)) text = `'${text}`;
+  if (/^[\t\r\n ]*[=+\-@]/.test(text)) text = `'${text}`;
   return `"${text.replace(/"/g, '""')}"`;
 }
 
