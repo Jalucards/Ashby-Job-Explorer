@@ -1,6 +1,6 @@
 # Ashby Job Explorer
 
-A self-built job search tool for aggregating and filtering postings across thousands of companies that use the Ashby ATS — built with AI-assisted development (Claude) end-to-end, from architecture decisions through debugging and testing.
+Ashby Job Explorer is a local job-search dashboard that aggregates, normalizes, searches, and monitors public job postings across thousands of Ashby-hosted company boards. It includes employer discovery, job-history tracking, location normalization, compensation extraction, saved searches, and local persistence.
 
 **[Live demo](https://jalucards.github.io/Ashby-Job-Explorer/)**
 
