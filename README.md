@@ -2,7 +2,7 @@
 
 A self-built job search tool for aggregating and filtering postings across thousands of companies that use the Ashby ATS — built with AI-assisted development (Claude) end-to-end, from architecture decisions through debugging and testing.
 
-**[Live demo](#)**
+**[Live demo](https://jalucards.github.io/Ashby-Job-Explorer/)**
 
 ## What it does
 
