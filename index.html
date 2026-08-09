@@ -25,13 +25,13 @@
     --info: #60A5FA;
     --neutral-bg: rgba(255,255,255,0.05);
     --font-sans: 'Inter', -apple-system, sans-serif;
-    /* Spacing scale \u2014 used for consistent padding/gaps across cards */
+    /* Spacing scale — used for consistent padding/gaps across cards */
     --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px;
     /* Radius scale */
     --radius-sm: 8px; --radius: 12px; --radius-lg: 16px;
-    /* Avatar sizing \u2014 one token so job cards, company cards, and the sidebar all match */
+    /* Avatar sizing — one token so job cards, company cards, and the sidebar all match */
     --avatar-size: 36px; --avatar-radius: 10px;
-    /* Restrained blur \u2014 dialed back from a heavier glow for a cleaner, more
+    /* Restrained blur — dialed back from a heavier glow for a cleaner, more
        readable "premium SaaS" feel rather than a glossy/neon look. */
     --blur: blur(16px);
     --shadow-card: 0 1px 2px rgba(0,0,0,0.18), 0 6px 18px rgba(0,0,0,0.22);
@@ -137,6 +137,7 @@
   .slug-hint code { background: var(--neutral-bg); padding: 1px 4px; border-radius: 4px; color: var(--text-secondary); }
   .row-btns { display: flex; gap: 6px; margin-bottom: 6px; }
   .row-btns .btn { flex: 1; font-size: 11px; padding: 7px 8px; }
+  .button-row-compact { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
   .status-pills { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
   .status-pill {
     background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
@@ -244,7 +245,21 @@
     border-radius: 16px;
     padding: 16px 18px;
     box-shadow: var(--shadow-card);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
   }
+  .stat-icon {
+    width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; line-height: 1;
+  }
+  .stat-icon-blue { background: rgba(96,165,250,0.22); }
+  .stat-icon-purple { background: var(--accent-bg); }
+  .stat-icon-green { background: var(--success-bg); }
+  .stat-icon-orange { background: rgba(240,185,78,0.20); }
+  .stat-icon-pink { background: var(--danger-bg); }
+  .stat-body { min-width: 0; flex: 1; }
   .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 8px; font-weight: 700; }
   .stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
   .stat-value.accent-text { color: var(--accent); }
@@ -265,7 +280,7 @@
     font-family: var(--font-sans);
   }
   .search-input::placeholder, .filter-select::placeholder { color: var(--text-muted); }
-  .search-input { flex: 1 1 200px; min-width: 160px; }
+  .search-input { flex: 1 1 260px; min-width: 160px; max-width: 380px; }
   .filter-select { flex: 1 1 130px; min-width: 110px; max-width: 220px; }
   .search-input:focus, .filter-select:focus { outline: none; border-color: var(--accent); }
   .toggle-row { display: flex; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--text-secondary); }
@@ -379,6 +394,31 @@
   .view-toggle-btn.active { background: linear-gradient(135deg, var(--accent), var(--accent-dim)); color: #fff; }
   .view-toggle-btn:not(.active):hover { color: var(--text-primary); }
 
+  .side-nav { display: flex; flex-direction: column; gap: 2px; margin: 18px 0; }
+  .side-nav-item {
+    display: block; width: 100%; text-align: left;
+    background: none; border: none; color: var(--text-secondary);
+    font-size: 13px; font-weight: 600; font-family: var(--font-sans);
+    padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer;
+  }
+  .side-nav-item:hover { background: var(--surface); color: var(--text-primary); }
+  .side-nav-item.active { background: var(--accent-bg); color: var(--accent); }
+
+  .manage-panel-inner {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: var(--space-4);
+  }
+  .settings-section { margin-bottom: var(--space-5); }
+  .filters-page-item {
+    background: var(--surface); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-4);
+    margin-bottom: var(--space-3); box-shadow: var(--shadow-card);
+  }
+  .filters-page-item-name { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .filters-page-item-meta { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+  .filters-page-item-meta b { color: var(--text-primary); }
+  .filters-page-item-actions { display: flex; gap: 8px; margin-top: 10px; }
+
   .company-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
   .company-card {
     background: var(--surface); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
@@ -415,6 +455,28 @@
   .modal-md { max-width: 480px; }
   .modal-lg { max-width: 620px; }
   .empty-hint { padding: 10px 6px; font-size: 12px; color: var(--text-muted); }
+
+  #companyFilterChipRow { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .filter-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--accent-bg); border: 1px solid var(--accent); color: var(--accent);
+    font-size: 12px; font-weight: 600; padding: 6px 8px 6px 12px; border-radius: 20px;
+  }
+  .filter-chip b { color: var(--text-primary); font-weight: 700; }
+  .filter-chip-remove {
+    background: none; border: none; color: var(--accent); font-size: 15px; line-height: 1; cursor: pointer;
+    padding: 2px 4px; border-radius: 50%;
+  }
+  .filter-chip-remove:hover { background: rgba(139,124,246,0.25); }
+  .all-jobs-link {
+    background: none; border: none; color: var(--text-secondary); font-size: 12px; font-weight: 600;
+    text-decoration: underline; cursor: pointer; padding: 0; font-family: var(--font-sans);
+  }
+  .all-jobs-link:hover { color: var(--text-primary); }
+
+  .btn-danger-subtle:hover { border-color: var(--danger); color: var(--danger); }
+
+  .no-errors-state { font-size: 13px; color: var(--success); padding: 6px 2px; }
   .error-banner {
     background: var(--danger-bg);
     backdrop-filter: var(--blur);
@@ -482,112 +544,154 @@
         <p class="brand-sub">Aggregated postings, single page</p>
       </div>
     </div>
-    <input class="company-search" id="companySearchInput" placeholder="Search tracked companies..." aria-label="Search tracked companies">
 
-    <div class="nav-label">Add a company</div>
-    <div class="add-company-row">
-      <input id="companyInput" placeholder="e.g. ramp" aria-label="Company slug to add">
-      <button id="addCompanyBtn">+</button>
-    </div>
-    <p class="slug-hint">
-      Find the slug in the company's Ashby URL:<br>
-      <code>jobs.ashbyhq.com/<b>slug</b></code>
-    </p>
-    <button id="moreAddOptionsToggle" class="btn btn-block mb-2">More ways to add</button>
-    <div id="moreAddOptions" style="display:none;">
-      <div class="row-btns">
-        <button class="btn" id="bulkAddBtn">Bulk add</button>
-        <button class="btn" id="seedBtn">Starter list</button>
-      </div>
-      <div class="row-btns">
-        <button class="btn" id="communityListBtn">Community list</button>
-        <button class="btn" id="importCompaniesBtn">Import list</button>
-      </div>
-    </div>
-    <input type="file" id="importCompaniesFile" accept="application/json" style="display:none;">
-
-    <div class="nav-label">Tracked companies (<span id="companyCount">0</span>)</div>
-    <div class="status-pills" id="statusPills"></div>
-    <select class="source-filter" id="sourceFilterSelect"><option value="all">All sources</option></select>
-    <div class="bulk-action-bar" id="bulkActionBar"></div>
-    <button id="toggleCompanyListBtn" class="btn btn-block mb-2">Show list</button>
-    <div class="company-list" id="companyList"></div>
+    <nav class="side-nav" aria-label="Primary">
+      <button type="button" class="side-nav-item active" id="navOverviewBtn" data-view="overview">Overview</button>
+      <button type="button" class="side-nav-item" id="navCompaniesBtn" data-view="companies">Companies</button>
+      <button type="button" class="side-nav-item" id="navJobsBtn" data-view="jobs">Jobs</button>
+      <!-- Watchlist intentionally hidden from primary nav until the feature is built.
+           The page container and switchView() logic below are untouched —
+           re-adding this button is the only step needed to bring it back. -->
+      <button type="button" class="side-nav-item" id="navFiltersBtn" data-view="filters">Filters</button>
+      <button type="button" class="side-nav-item" id="navSettingsBtn" data-view="settings">Settings</button>
+    </nav>
 
     <div class="sidebar-footer">
       <div class="last-refreshed-sub" id="sidebarRefreshStatus"></div>
-      <button id="manageDataToggle" class="btn btn-block mb-2">Manage data</button>
-      <div id="manageDataPanel" style="display:none;">
-        <div class="row-btns">
-          <button class="btn" id="exportCompaniesBtn">Export list</button>
-          <button class="btn" id="retryFailedBtn">Retry failed</button>
-        </div>
-        <div class="row-btns">
-          <button class="btn" id="clearFailedBtn">Clear failed</button>
-        </div>
-      </div>
       <button class="btn btn-primary" id="refreshBtn">Refresh all</button>
+      <button class="btn btn-block" id="importCompaniesQuickBtn">Import companies</button>
     </div>
   </div>
 
   <div class="main">
     <div class="top-row">
       <div>
-        <p class="page-title" id="pageTitle">Open Roles</p>
+        <p class="page-title" id="pageTitle">Overview</p>
         <p class="page-sub" id="lastFetchedSub">Add a company slug to get started.</p>
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
-        <div class="view-toggle">
-          <button class="view-toggle-btn active" id="jobsViewBtn">Jobs</button>
-          <button class="view-toggle-btn" id="companiesViewBtn">Companies</button>
-        </div>
         <button class="btn" id="historyBtn">History</button>
-        <button class="btn" id="savedSearchBtn">Saved filters</button>
+        <button class="btn" id="savedSearchBtn">New filter</button>
         <button class="btn" id="exportBtn">Export CSV</button>
       </div>
     </div>
 
-    <div class="stats-row">
-      <div class="stat-card"><div class="stat-label">Companies</div><div class="stat-value" id="statCompanies">0</div></div>
-      <div class="stat-card">
-        <div class="stat-label">Open jobs</div>
-        <div class="stat-value accent-text" id="statJobs">0</div>
-        <div class="stat-delta" id="statJobsDelta"></div>
+    <!-- OVERVIEW: dashboard summary, a capped preview of the company grid -->
+    <div id="overviewViewContainer">
+      <div class="toolbar" id="overviewToolbar">
+        <input class="search-input" id="overviewSearch" placeholder="Search companies, roles, or keywords..." aria-label="Search companies">
+        <select id="overviewSort">
+          <option value="recent">Recently updated</option>
+          <option value="jobs">Most open jobs</option>
+          <option value="alpha">Alphabetical</option>
+        </select>
       </div>
-      <div class="stat-card"><div class="stat-label">New this refresh</div><div class="stat-value success-text" id="statNew">0</div></div>
-      <div class="stat-card"><div class="stat-label">Matching filter</div><div class="stat-value" id="statMatching">0</div></div>
-      <div class="stat-card" id="statErrorsCard"><div class="stat-label">Fetch errors</div><div class="stat-value danger-text" id="statErrors">0</div></div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-blue" aria-hidden="true">&#128188;</div>
+          <div class="stat-body"><div class="stat-label">Companies</div><div class="stat-value" id="statCompanies">0</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-purple" aria-hidden="true">&#128203;</div>
+          <div class="stat-body">
+            <div class="stat-label">Open jobs</div>
+            <div class="stat-value accent-text" id="statJobs">0</div>
+            <div class="stat-delta" id="statJobsDelta"></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-green" aria-hidden="true">&#10024;</div>
+          <div class="stat-body"><div class="stat-label">New this refresh</div><div class="stat-value success-text" id="statNew">0</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon-orange" aria-hidden="true">&#128269;</div>
+          <div class="stat-body"><div class="stat-label">Matching filter</div><div class="stat-value" id="statMatching">0</div></div>
+        </div>
+        <div class="stat-card" id="statErrorsCard">
+          <div class="stat-icon stat-icon-pink" aria-hidden="true">&#9888;</div>
+          <div class="stat-body"><div class="stat-label">Fetch errors</div><div class="stat-value danger-text" id="statErrors">0</div></div>
+        </div>
+      </div>
+
+      <div id="overviewPills" class="status-pills mb-3"></div>
+      <div class="company-card-grid" id="overviewCardGrid"></div>
+      <div style="text-align:center; margin-top:16px;">
+        <button class="btn" id="overviewViewAllBtn">View all companies</button>
+      </div>
     </div>
 
-    <div id="errorBanner"></div>
-
-    <div id="jobsViewContainer">
+    <!-- JOBS -->
+    <div id="jobsViewContainer" style="display:none;">
+      <div id="companyFilterChipRow" style="display:none;"></div>
       <div class="toolbar">
         <input class="search-input" id="searchInput" placeholder="Search title or company..." aria-label="Search job title or company">
-        <input class="filter-select" id="deptFilter" list="deptOptions" placeholder="Department contains..." aria-label="Filter by department">
-        <datalist id="deptOptions"></datalist>
-        <select id="countryFilterSelect"><option value="all">All countries</option></select>
-        <select id="regionFilterSelect"><option value="all">All states/cities</option></select>
-        <select class="filter-select" id="savedFilterSelect"><option value="none">No saved filter</option></select>
+        <div class="view-mode-toggle" role="group" aria-label="Job display mode">
+          <button type="button" class="view-mode-btn active" id="jobsGridModeBtn">Grid</button>
+          <button type="button" class="view-mode-btn" id="jobsListModeBtn">List</button>
+        </div>
         <select class="filter-select" id="sortSelect">
           <option value="newest">Newest first</option>
           <option value="oldest">Oldest first</option>
           <option value="company">By company</option>
         </select>
-        <div class="view-mode-toggle" role="group" aria-label="Job display mode">
-          <button type="button" class="view-mode-btn active" id="jobsGridModeBtn">Grid</button>
-          <button type="button" class="view-mode-btn" id="jobsListModeBtn">List</button>
-        </div>
+        <button class="btn" id="jobsFilterDrawerToggle">Filters</button>
       </div>
-      <div class="toggle-row">
-        <label><input type="checkbox" id="newOnlyToggle"> New since last refresh only</label>
-        <label><input type="checkbox" id="showClosedToggle"> Show closed/removed postings</label>
-        <label><input type="checkbox" id="closedThisRefreshToggle"> Closed since last refresh only</label>
+      <div id="jobsFilterDrawer" style="display:none;">
+        <div class="toolbar">
+          <input class="filter-select" id="deptFilter" list="deptOptions" placeholder="Department contains..." aria-label="Filter by department">
+          <datalist id="deptOptions"></datalist>
+          <select id="countryFilterSelect"><option value="all">All countries</option></select>
+          <select id="regionFilterSelect"><option value="all">All states/cities</option></select>
+          <select class="filter-select" id="savedFilterSelect"><option value="none">No saved filter</option></select>
+        </div>
+        <div class="toggle-row">
+          <label><input type="checkbox" id="newOnlyToggle"> New since last refresh only</label>
+          <label><input type="checkbox" id="showClosedToggle"> Show closed/removed postings</label>
+          <label><input type="checkbox" id="closedThisRefreshToggle"> Closed since last refresh only</label>
+        </div>
       </div>
 
       <div class="job-list" id="jobList"></div>
     </div>
 
+    <!-- COMPANIES: full browsing grid + a collapsible company-management panel -->
     <div id="companiesViewContainer" style="display:none;">
+      <button id="manageCompaniesToggle" class="btn mb-2">Manage companies</button>
+      <div id="manageCompaniesPanel" style="display:none;" class="mb-3">
+        <div class="manage-panel-inner">
+          <div class="nav-label">Add a company</div>
+          <div class="add-company-row">
+            <input id="companyInput" placeholder="e.g. ramp" aria-label="Company slug to add">
+            <button id="addCompanyBtn">+</button>
+          </div>
+          <p class="slug-hint">
+            Find the slug in the company's Ashby URL:<br>
+            <code>jobs.ashbyhq.com/<b>slug</b></code>
+          </p>
+          <button id="moreAddOptionsToggle" class="btn btn-block mb-2">More ways to add</button>
+          <div id="moreAddOptions" style="display:none;">
+            <div class="row-btns">
+              <button class="btn" id="bulkAddBtn">Bulk add</button>
+              <button class="btn" id="seedBtn">Starter list</button>
+            </div>
+            <div class="row-btns">
+              <button class="btn" id="communityListBtn">Community list</button>
+              <button class="btn" id="importCompaniesBtn">Import list</button>
+            </div>
+          </div>
+          <input type="file" id="importCompaniesFile" accept="application/json" style="display:none;">
+
+          <div class="nav-label">Tracked companies (<span id="companyCount">0</span>)</div>
+          <input class="company-search" id="companySearchInput" placeholder="Search tracked companies..." aria-label="Search tracked companies">
+          <div class="status-pills mb-2" id="statusPills"></div>
+          <select class="source-filter" id="sourceFilterSelect"><option value="all">All sources</option></select>
+          <div class="bulk-action-bar" id="bulkActionBar"></div>
+          <button id="toggleCompanyListBtn" class="btn btn-block mb-2">Show list</button>
+          <div class="company-list" id="companyList"></div>
+        </div>
+      </div>
+
       <div class="toolbar">
         <input class="search-input" id="companiesViewSearch" placeholder="Search companies..." aria-label="Search companies">
         <select id="companiesViewSort">
@@ -599,6 +703,38 @@
       </div>
       <div id="companiesViewPills" class="status-pills mb-3"></div>
       <div class="company-card-grid" id="companyCardGrid"></div>
+    </div>
+
+    <!-- WATCHLIST: hidden from primary nav (Option A), but the page and its
+         view-switching logic stay intact for easy re-enabling later. -->
+    <div id="watchlistViewContainer" style="display:none;">
+      <div class="empty-state">
+        <div style="font-weight:700; font-size:15px; color:var(--text-primary); margin-bottom:6px;">No saved jobs yet</div>
+        <div>You'll be able to save interesting jobs here for quick access.</div>
+      </div>
+    </div>
+
+    <!-- FILTERS: real page listing your saved keyword filters -->
+    <div id="filtersViewContainer" style="display:none;">
+      <div id="filtersPageList"></div>
+    </div>
+
+    <!-- SETTINGS: real data-management actions -->
+    <div id="settingsViewContainer" style="display:none;">
+      <div class="settings-section">
+        <div class="nav-label">Company list</div>
+        <p class="page-sub" style="margin-bottom:10px;">Export or repair your tracked company data.</p>
+        <div class="button-row-compact">
+          <button class="btn" id="exportCompaniesBtn">Export list</button>
+          <button class="btn" id="retryFailedBtn">Retry failed</button>
+          <button class="btn btn-danger-subtle" id="clearFailedBtn">Clear failed</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="nav-label">Fetch issues</div>
+        <div id="errorBanner"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -875,84 +1011,6 @@ async function idbSet(key, value) {
   });
 }
 
-// ---------- demo seed (portfolio/demo copies only) ----------
-// If this is a completely fresh load (no companies tracked yet, e.g. someone
-// opening this from a portfolio/GitHub Pages link rather than the person's
-// own copy with real data), seed a small set of REAL, currently-open job
-// postings so the demo isn't an empty page. Every entry below was actually
-// fetched and verified, not fabricated. This never overwrites existing data
-// — it only runs when companies.length === 0.
-function getDemoSeedData() {
-  const now = Date.now();
-  const companies = [
-    { slug: 'dualentry', enabled: true, source: 'demo-seed', addedAt: now },
-    { slug: '9fin', enabled: true, source: 'demo-seed', addedAt: now },
-    { slug: 'astronomer', enabled: true, source: 'demo-seed', addedAt: now },
-    { slug: 'langchain', enabled: true, source: 'demo-seed', addedAt: now },
-  ];
-
-  function job(overrides) {
-    return Object.assign({
-      department: '', team: '', employmentType: '', isRemote: false,
-      publishedAt: null, compensation: '', compensationUnconfirmed: false,
-      firstSeenAt: now, lastSeenAt: now, status: 'open', closedAt: null, isNew: true,
-    }, overrides);
-  }
-
-  const cache = {
-    dualentry: {
-      fetchedAt: now, lastAttemptAt: now, error: null, stale: false,
-      jobs: [ job({
-        title: 'Business Development Representative',
-        location: 'New York, NY', department: 'GTM',
-        jobUrl: 'https://jobs.ashbyhq.com/dualentry/697e626e-91ba-4af5-969f-f188616e9d81',
-        compensation: '$115,000 - $175,000 OTE',
-      }) ],
-    },
-    '9fin': {
-      fetchedAt: now, lastAttemptAt: now, error: null, stale: false,
-      jobs: [ job({
-        title: 'Senior Product Marketing Manager',
-        location: 'New York, NY', department: 'Marketing',
-        jobUrl: 'https://jobs.ashbyhq.com/9fin/3d807142-3142-43a3-86a8-84ef3d3c662b',
-        compensation: '$160,000 - $200,000', compensationUnconfirmed: true,
-      }) ],
-    },
-    astronomer: {
-      fetchedAt: now, lastAttemptAt: now, error: null, stale: false,
-      jobs: [ job({
-        title: 'Sales Development Representative - NYC (hybrid 4 days in office)',
-        location: 'New York, NY', department: 'Sales',
-        jobUrl: 'https://jobs.ashbyhq.com/astronomer/a8c688d5-ae4c-4d32-b433-57ecdce22fe7',
-        compensation: '$90,000 - $115,000',
-      }) ],
-    },
-    langchain: {
-      fetchedAt: now, lastAttemptAt: now, error: null, stale: false,
-      jobs: [
-        job({
-          title: 'Developer Advocate, LangSmith', department: 'Developer Relations',
-          jobUrl: 'https://jobs.ashbyhq.com/langchain/0b5c9efa-aec8-451d-a24a-a54865c46924',
-        }),
-        job({
-          title: 'Infrastructure Engineer (LangGraph Platform)', department: 'Engineering',
-          jobUrl: 'https://jobs.ashbyhq.com/langchain/2c93e40b-8fc0-452c-9bbb-8c5b5c0dc8d7',
-        }),
-        job({
-          title: 'Product Marketing - Agent Infrastructure', department: 'Marketing',
-          jobUrl: 'https://jobs.ashbyhq.com/langchain/c0706500-4575-4150-88a7-e189ecb96d60',
-        }),
-        job({
-          title: 'IT Engineer', department: 'IT',
-          jobUrl: 'https://jobs.ashbyhq.com/langchain/6f50988c-8e95-4a68-aeea-a94872651ff7',
-        }),
-      ],
-    },
-  };
-
-  return { companies, cache };
-}
-
 async function loadState() {
   try { companies = JSON.parse(localStorage.getItem(COMPANIES_KEY)) || []; } catch (e) { companies = []; }
   try { savedFilters = JSON.parse(localStorage.getItem(SAVED_FILTERS_KEY)) || []; } catch (e) { savedFilters = []; }
@@ -982,20 +1040,6 @@ async function loadState() {
       }
     } catch (e) {
       console.error('legacy cache migration failed', e);
-    }
-  }
-
-  // Demo seed: only if this is a completely fresh load with zero tracked
-  // companies (never overwrites real data \u2014 see getDemoSeedData above).
-  if (companies.length === 0 && Object.keys(cache).length === 0) {
-    const seed = getDemoSeedData();
-    companies = seed.companies;
-    cache = seed.cache;
-    try {
-      localStorage.setItem(COMPANIES_KEY, JSON.stringify(companies));
-      await idbSet('cache', cache);
-    } catch (e) {
-      console.error('demo seed save failed', e);
     }
   }
 }
@@ -1986,7 +2030,10 @@ let errorDetailExpanded = false;
 function renderErrorBanner() {
   const banner = document.getElementById('errorBanner');
   const errored = companies.filter(c => cache[c.slug] && cache[c.slug].error);
-  if (errored.length === 0) { banner.innerHTML = ''; return; }
+  if (errored.length === 0) {
+    banner.innerHTML = '<div class="no-errors-state">No current fetch errors.</div>';
+    return;
+  }
 
   const parts = errored.map(c => {
     const e = cache[c.slug];
@@ -2066,6 +2113,30 @@ function renderHistoryModal() {
     `;
   }).join('');
   body.innerHTML = rows;
+}
+
+function clearCompanyFilter() {
+  companyFilter = null;
+  render();
+}
+
+function renderCompanyFilterChip() {
+  const row = document.getElementById('companyFilterChipRow');
+  if (!companyFilter) {
+    row.style.display = 'none';
+    row.innerHTML = '';
+    return;
+  }
+  row.style.display = 'flex';
+  row.innerHTML = `
+    <div class="filter-chip">
+      Company: <b>${esc(companyFilter)}</b>
+      <button type="button" class="filter-chip-remove" id="clearCompanyFilterBtn" aria-label="Clear company filter">\u00d7</button>
+    </div>
+    <button type="button" class="all-jobs-link" id="allJobsLinkBtn">All jobs</button>
+  `;
+  document.getElementById('clearCompanyFilterBtn').addEventListener('click', clearCompanyFilter);
+  document.getElementById('allJobsLinkBtn').addEventListener('click', clearCompanyFilter);
 }
 
 function renderJobs(jobs) {
@@ -2211,25 +2282,81 @@ function computeFilterSignature() {
   ].join('|');
 }
 
-let currentView = 'jobs'; // 'jobs' | 'companies'
+let currentView = 'overview'; // 'overview' | 'jobs' | 'companies' | 'watchlist' | 'filters' | 'settings'
 let jobsDisplayMode = 'grid'; // 'grid' | 'list'
 let companiesViewFilter = 'all'; // 'all' | 'hasOpenings' | 'noOpenings' | 'newThisWeek' | 'errors'
 let companiesViewRenderLimit = JOB_BATCH_SIZE;
 let lastCompaniesViewSignature = null;
 
+const VIEW_CONTAINERS = ['overview', 'jobs', 'companies', 'watchlist', 'filters', 'settings'];
+const VIEW_TITLES = {
+  overview: 'Overview', jobs: 'Open Roles', companies: 'Companies',
+  watchlist: 'Watchlist', filters: 'Filters', settings: 'Settings',
+};
+
 function switchView(view) {
   currentView = view;
-  document.getElementById('jobsViewBtn').classList.toggle('active', view === 'jobs');
-  document.getElementById('companiesViewBtn').classList.toggle('active', view === 'companies');
-  document.getElementById('jobsViewContainer').style.display = view === 'jobs' ? 'block' : 'none';
-  document.getElementById('companiesViewContainer').style.display = view === 'companies' ? 'block' : 'none';
-  document.getElementById('pageTitle').textContent = view === 'jobs' ? 'Open Roles' : 'Companies';
+  VIEW_CONTAINERS.forEach(v => {
+    const nav = document.getElementById('nav' + v.charAt(0).toUpperCase() + v.slice(1) + 'Btn');
+    if (nav) nav.classList.toggle('active', v === view);
+    const container = document.getElementById(v + 'ViewContainer');
+    if (container) container.style.display = v === view ? 'block' : 'none';
+  });
+  document.getElementById('pageTitle').textContent = VIEW_TITLES[view] || 'Overview';
   render();
 }
 
 function companyOpenJobCount(slug) {
   const entry = cache[slug];
   return entry ? entry.jobs.filter(j => j.status !== 'closed').length : 0;
+}
+
+function buildCompanyCard(c) {
+  const jobCount = companyOpenJobCount(c.slug);
+  const entry = cache[c.slug];
+  const card = document.createElement('div');
+  card.className = 'company-card';
+
+  const header = document.createElement('div');
+  header.className = 'company-card-header';
+  const avatar = document.createElement('div');
+  avatar.className = 'company-card-avatar';
+  avatar.style.background = avatarColor(c.slug) + '30';
+  avatar.style.color = avatarColor(c.slug);
+  avatar.textContent = initials(c.slug);
+  header.appendChild(avatar);
+  const name = document.createElement('div');
+  name.className = 'company-card-name';
+  name.textContent = c.slug;
+  header.appendChild(name);
+  card.appendChild(header);
+
+  const meta = document.createElement('div');
+  meta.className = 'company-card-meta';
+  let statusText = 'Not fetched yet';
+  if (entry) {
+    if (entry.error) statusText = entry.stale ? 'Error \u2014 showing cached jobs' : 'Fetch error';
+    else statusText = 'Updated ' + new Date(entry.fetchedAt).toLocaleDateString();
+  }
+  meta.textContent = statusText;
+  card.appendChild(meta);
+
+  const jobsLine = document.createElement('div');
+  jobsLine.className = 'company-card-jobs ' + (jobCount > 0 ? 'some' : 'zero');
+  jobsLine.textContent = jobCount > 0 ? `${jobCount.toLocaleString()} open job${jobCount === 1 ? '' : 's'}` : 'No open jobs';
+  card.appendChild(jobsLine);
+
+  const viewBtn = document.createElement('button');
+  viewBtn.className = 'job-link';
+  viewBtn.style.cssText = 'border:none; width:100%; cursor:pointer;';
+  viewBtn.textContent = 'View jobs';
+  viewBtn.addEventListener('click', () => {
+    companyFilter = c.slug;
+    switchView('jobs');
+  });
+  card.appendChild(viewBtn);
+
+  return card;
 }
 
 function renderCompaniesView() {
@@ -2300,51 +2427,7 @@ function renderCompaniesView() {
 
   const frag = document.createDocumentFragment();
   visibleList.forEach(c => {
-    const jobCount = companyOpenJobCount(c.slug);
-    const entry = cache[c.slug];
-    const card = document.createElement('div');
-    card.className = 'company-card';
-
-    const header = document.createElement('div');
-    header.className = 'company-card-header';
-    const avatar = document.createElement('div');
-    avatar.className = 'company-card-avatar';
-    avatar.style.background = avatarColor(c.slug) + '30';
-    avatar.style.color = avatarColor(c.slug);
-    avatar.textContent = initials(c.slug);
-    header.appendChild(avatar);
-    const name = document.createElement('div');
-    name.className = 'company-card-name';
-    name.textContent = c.slug;
-    header.appendChild(name);
-    card.appendChild(header);
-
-    const meta = document.createElement('div');
-    meta.className = 'company-card-meta';
-    let statusText = 'Not fetched yet';
-    if (entry) {
-      if (entry.error) statusText = entry.stale ? 'Error \u2014 showing cached jobs' : 'Fetch error';
-      else statusText = 'Updated ' + new Date(entry.fetchedAt).toLocaleDateString();
-    }
-    meta.textContent = statusText;
-    card.appendChild(meta);
-
-    const jobsLine = document.createElement('div');
-    jobsLine.className = 'company-card-jobs ' + (jobCount > 0 ? 'some' : 'zero');
-    jobsLine.textContent = jobCount > 0 ? `${jobCount.toLocaleString()} open job${jobCount === 1 ? '' : 's'}` : 'No open jobs';
-    card.appendChild(jobsLine);
-
-    const viewBtn = document.createElement('button');
-    viewBtn.className = 'job-link';
-    viewBtn.style.cssText = 'border:none; width:100%; cursor:pointer;';
-    viewBtn.textContent = 'View jobs';
-    viewBtn.addEventListener('click', () => {
-      companyFilter = c.slug;
-      switchView('jobs');
-    });
-    card.appendChild(viewBtn);
-
-    frag.appendChild(card);
+    frag.appendChild(buildCompanyCard(c));
   });
   grid.appendChild(frag);
 
@@ -2368,15 +2451,149 @@ function renderCompaniesView() {
   }
 }
 
+const OVERVIEW_PREVIEW_LIMIT = 10;
+
+function renderOverviewView() {
+  // Shares companiesViewFilter state with the Companies page, so selecting a
+  // pill here and then clicking "View all companies" lands on the same filter.
+  const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const counts = { all: companies.length, hasOpenings: 0, noOpenings: 0, newThisWeek: 0, errors: 0 };
+  companies.forEach(c => {
+    const jobCount = companyOpenJobCount(c.slug);
+    const hasError = cache[c.slug] && cache[c.slug].error;
+    if (jobCount > 0) counts.hasOpenings++; else counts.noOpenings++;
+    if (c.addedAt && c.addedAt >= oneWeekAgo) counts.newThisWeek++;
+    if (hasError) counts.errors++;
+  });
+
+  const pillDefs = [
+    { key: 'all', label: 'All' },
+    { key: 'hasOpenings', label: 'Has openings' },
+    { key: 'noOpenings', label: 'No openings' },
+    { key: 'newThisWeek', label: 'New this week' },
+    { key: 'errors', label: 'Errors' },
+  ];
+  const pillsEl = document.getElementById('overviewPills');
+  pillsEl.innerHTML = '';
+  pillDefs.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'status-pill' + (companiesViewFilter === p.key ? ' active' : '');
+    btn.textContent = `${p.label} (${counts[p.key]})`;
+    btn.addEventListener('click', () => { companiesViewFilter = p.key; renderOverviewView(); });
+    pillsEl.appendChild(btn);
+  });
+
+  const searchTerm = document.getElementById('overviewSearch').value.trim().toLowerCase();
+  const sortMode = document.getElementById('overviewSort').value;
+
+  let list = companies.filter(c => {
+    if (searchTerm && !c.slug.toLowerCase().includes(searchTerm)) return false;
+    const jobCount = companyOpenJobCount(c.slug);
+    const hasError = cache[c.slug] && cache[c.slug].error;
+    if (companiesViewFilter === 'hasOpenings' && jobCount === 0) return false;
+    if (companiesViewFilter === 'noOpenings' && jobCount > 0) return false;
+    if (companiesViewFilter === 'newThisWeek' && !(c.addedAt && c.addedAt >= oneWeekAgo)) return false;
+    if (companiesViewFilter === 'errors' && !hasError) return false;
+    return true;
+  });
+
+  list.sort((a, b) => {
+    if (sortMode === 'jobs') return companyOpenJobCount(b.slug) - companyOpenJobCount(a.slug);
+    if (sortMode === 'alpha') return a.slug.localeCompare(b.slug);
+    const aTime = (cache[a.slug] && cache[a.slug].fetchedAt) || 0;
+    const bTime = (cache[b.slug] && cache[b.slug].fetchedAt) || 0;
+    return bTime - aTime;
+  });
+
+  const grid = document.getElementById('overviewCardGrid');
+  grid.innerHTML = '';
+  const viewAllBtn = document.getElementById('overviewViewAllBtn');
+  if (list.length === 0) {
+    grid.innerHTML = '<div class="empty-state">No companies match right now.</div>';
+    viewAllBtn.style.display = 'none';
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  list.slice(0, OVERVIEW_PREVIEW_LIMIT).forEach(c => frag.appendChild(buildCompanyCard(c)));
+  grid.appendChild(frag);
+  viewAllBtn.style.display = list.length > OVERVIEW_PREVIEW_LIMIT ? 'inline-block' : 'none';
+  viewAllBtn.textContent = list.length > OVERVIEW_PREVIEW_LIMIT
+    ? `View all ${list.length} companies`
+    : 'View all companies';
+}
+
+function renderFiltersPage() {
+  const container = document.getElementById('filtersPageList');
+  container.innerHTML = '';
+
+  if (savedFilters.length === 0) {
+    container.innerHTML = '<div class="empty-state">No saved filters yet. Click "New filter" above to create one.</div>';
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  savedFilters.forEach(f => {
+    const item = document.createElement('div');
+    item.className = 'filters-page-item';
+
+    const name = document.createElement('div');
+    name.className = 'filters-page-item-name';
+    name.textContent = f.name;
+    item.appendChild(name);
+
+    const meta = document.createElement('div');
+    meta.className = 'filters-page-item-meta';
+    meta.innerHTML = `
+      <div><b>Include:</b> ${f.include.length ? esc(f.include.join(', ')) : '<span style="color:var(--text-muted);">(none)</span>'}</div>
+      <div><b>Exclude:</b> ${f.exclude.length ? esc(f.exclude.join(', ')) : '<span style="color:var(--text-muted);">(none)</span>'}</div>
+    `;
+    item.appendChild(meta);
+
+    const actions = document.createElement('div');
+    actions.className = 'filters-page-item-actions';
+
+    const applyBtn = document.createElement('button');
+    applyBtn.className = 'btn';
+    applyBtn.textContent = 'Apply on Jobs page';
+    applyBtn.addEventListener('click', () => {
+      switchView('jobs');
+      document.getElementById('savedFilterSelect').value = f.name;
+      document.getElementById('savedFilterSelect').dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    actions.appendChild(applyBtn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'btn';
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.addEventListener('click', () => {
+      if (!confirm(`Delete the saved filter "${f.name}"?`)) return;
+      savedFilters = savedFilters.filter(sf => sf.name !== f.name);
+      persistState();
+      render();
+    });
+    actions.appendChild(deleteBtn);
+
+    item.appendChild(actions);
+    frag.appendChild(item);
+  });
+  container.appendChild(frag);
+}
+
 function render() {
   renderSidebar();
-  renderErrorBanner();
   renderSavedFilterOptions();
   const jobs = allJobs(); // computed once, reused everywhere below instead of each
                            // function re-walking every company's cached jobs itself
   populateFilters(jobs.filter(j => j.status !== 'closed'));
   const filtered = getFiltered(jobs);
-  renderStats(filtered, jobs);
+
+  if (currentView === 'overview') {
+    renderStats(filtered, jobs);
+  }
+  if (currentView === 'settings') {
+    renderErrorBanner();
+  }
 
   if (!isRefreshing) {
     const rel = formatRelativeTime(lastRefreshAt);
@@ -2390,10 +2607,16 @@ function render() {
   }
 
   if (currentView === 'jobs') {
+    renderCompanyFilterChip();
     renderJobs(filtered);
-  } else {
+  } else if (currentView === 'companies') {
     renderCompaniesView();
+  } else if (currentView === 'overview') {
+    renderOverviewView();
+  } else if (currentView === 'filters') {
+    renderFiltersPage();
   }
+  // 'watchlist' has nothing dynamic to render.
 }
 
 // ---------- wiring ----------
@@ -2404,12 +2627,6 @@ document.getElementById('moreAddOptionsToggle').addEventListener('click', () => 
   const isOpen = panel.style.display !== 'none';
   panel.style.display = isOpen ? 'none' : 'block';
   document.getElementById('moreAddOptionsToggle').textContent = isOpen ? 'More ways to add' : 'Fewer options';
-});
-document.getElementById('manageDataToggle').addEventListener('click', () => {
-  const panel = document.getElementById('manageDataPanel');
-  const isOpen = panel.style.display !== 'none';
-  panel.style.display = isOpen ? 'none' : 'block';
-  document.getElementById('manageDataToggle').textContent = isOpen ? 'Manage data' : 'Hide data options';
 });
 document.getElementById('companyInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') addCompany(); });
 document.getElementById('seedBtn').addEventListener('click', () => addSlugBatch(STARTER_LIST, 'starter-list'));
@@ -2457,7 +2674,36 @@ document.getElementById('bulkSubmitBtn').addEventListener('click', () => {
   addSlugBatch(extractCandidates(raw), 'bulk-paste');
 });
 
-document.getElementById('jobsViewBtn').addEventListener('click', () => switchView('jobs'));
+document.getElementById('navOverviewBtn').addEventListener('click', () => switchView('overview'));
+document.getElementById('navCompaniesBtn').addEventListener('click', () => switchView('companies'));
+document.getElementById('navJobsBtn').addEventListener('click', () => switchView('jobs'));
+const navWatchlistBtnEl = document.getElementById('navWatchlistBtn');
+if (navWatchlistBtnEl) navWatchlistBtnEl.addEventListener('click', () => switchView('watchlist'));
+document.getElementById('navFiltersBtn').addEventListener('click', () => switchView('filters'));
+document.getElementById('navSettingsBtn').addEventListener('click', () => switchView('settings'));
+document.getElementById('overviewViewAllBtn').addEventListener('click', () => switchView('companies'));
+
+document.getElementById('manageCompaniesToggle').addEventListener('click', () => {
+  const panel = document.getElementById('manageCompaniesPanel');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  document.getElementById('manageCompaniesToggle').textContent = isOpen ? 'Manage companies' : 'Hide manage companies';
+});
+
+document.getElementById('jobsFilterDrawerToggle').addEventListener('click', () => {
+  const drawer = document.getElementById('jobsFilterDrawer');
+  const isOpen = drawer.style.display !== 'none';
+  drawer.style.display = isOpen ? 'none' : 'block';
+  document.getElementById('jobsFilterDrawerToggle').textContent = isOpen ? 'Filters' : 'Hide filters';
+});
+
+document.getElementById('importCompaniesQuickBtn').addEventListener('click', () => {
+  switchView('companies');
+  document.getElementById('manageCompaniesPanel').style.display = 'block';
+  document.getElementById('manageCompaniesToggle').textContent = 'Hide manage companies';
+  document.getElementById('importCompaniesFile').click();
+});
+
 document.getElementById('jobsGridModeBtn').addEventListener('click', () => {
   jobsDisplayMode = 'grid';
   document.getElementById('jobsGridModeBtn').classList.add('active');
@@ -2470,8 +2716,9 @@ document.getElementById('jobsListModeBtn').addEventListener('click', () => {
   document.getElementById('jobsGridModeBtn').classList.remove('active');
   render();
 });
-document.getElementById('companiesViewBtn').addEventListener('click', () => switchView('companies'));
 document.getElementById('companiesViewSearch').addEventListener('input', debounce(renderCompaniesView));
+document.getElementById('overviewSearch').addEventListener('input', debounce(renderOverviewView));
+document.getElementById('overviewSort').addEventListener('change', renderOverviewView);
 document.getElementById('companiesViewSort').addEventListener('change', renderCompaniesView);
 
 document.getElementById('historyBtn').addEventListener('click', (e) => {
@@ -2546,6 +2793,7 @@ enhanceSelect('sourceFilterSelect', 'sidebar-sizing');
 enhanceSelect('savedFilterSelect', 'toolbar-sizing');
 enhanceSelect('sortSelect', 'toolbar-sizing');
 enhanceSelect('companiesViewSort', 'toolbar-sizing');
+enhanceSelect('overviewSort', 'toolbar-sizing');
 enhanceSelect('countryFilterSelect', 'toolbar-sizing');
 enhanceSelect('regionFilterSelect', 'toolbar-sizing');
 
