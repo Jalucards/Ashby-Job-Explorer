@@ -34,6 +34,16 @@ job count, status, and lastValidatedAt. A company that stops resolving
 gets marked "dead" rather than deleted, so you keep the history and can
 decide what to do with it in the main tool.
 
+RELEVANCE SCORING: every validated company also gets a relevantJobCount
+and a short sample of matching titles, based on whether any of its open
+jobs look like Sales/BD, Account Management/Customer Success, or
+Operations/Support roles (see RELEVANT_KEYWORDS below \u2014 edit that list
+any time your target roles change). This exists because most Ashby
+companies skew heavily toward engineering hiring, so raw discovery volume
+doesn't translate into relevant openings. Use it to decide which
+newly-found companies are actually worth importing, instead of importing
+everything and finding out later.
+
 This script does NOT search the web for new company names — it only
 validates candidates you already have. See the bottom of this file for
 notes on why, and what a "find new names" pass would require.
@@ -57,6 +67,25 @@ PROGRESS_FILE = "ashby_discovery_progress.json"
 REQUEST_DELAY_SECONDS = 0.6
 REQUEST_TIMEOUT_SECONDS = 10
 USER_AGENT = "ashby-job-explorer-discovery/1.0 (personal use)"
+
+# Checked against each open job's title AND department/team fields (lowercased,
+# substring match) to flag companies actually worth adding — not just ones
+# that happen to have a working Ashby board. Edit this list any time your
+# target roles change; it only affects scoring, never which slugs validate.
+RELEVANT_KEYWORDS = [
+    # Sales / Business Development
+    "sales", "business development", "bdr", "sdr", "account executive",
+    # Account Management / Customer Success
+    "account management", "account manager", "customer success", "client success",
+    "csm", "customer experience",
+    # Operations / Support
+    "operations", "customer support", "client support", " ops", "ops ",
+]
+
+
+def job_is_relevant(job):
+    haystack = " ".join(str(job.get(f, "")) for f in ("title", "department", "team")).lower()
+    return any(kw in haystack for kw in RELEVANT_KEYWORDS)
 
 
 def now_iso():
@@ -130,10 +159,15 @@ def check_slug(slug):
             if not isinstance(jobs, list):
                 return {"ok": False, "status": "invalid-response"}
             open_jobs = [j for j in jobs if isinstance(j, dict) and j.get("isListed") is not False]
+            relevant_jobs = [j for j in open_jobs if job_is_relevant(j)]
             return {
                 "ok": True,
                 "status": "active" if open_jobs else "valid-empty",
                 "jobCount": len(open_jobs),
+                "relevantJobCount": len(relevant_jobs),
+                # A short sample so you can sanity-check the match at a glance
+                # without opening the board yourself.
+                "relevantTitles": [j.get("title", "") for j in relevant_jobs[:3]],
             }
     except urllib.error.HTTPError as e:
         return {"ok": False, "status": f"http-{e.code}"}
@@ -234,8 +268,10 @@ def run_discovery():
         progress_position = total - len(remaining) + i
 
         if found:
+            relevance_note = (f", {found['relevantJobCount']} look relevant"
+                               if found['relevantJobCount'] > 0 else ", none look relevant")
             print(f"  [{progress_position}/{total}] OK    {name!r} -> slug '{found['slug']}' "
-                  f"({found['status']}, {found['jobCount']} open jobs)")
+                  f"({found['status']}, {found['jobCount']} open jobs{relevance_note})")
             resolved.append({
                 "slug": found["slug"],
                 "enabled": True,
@@ -245,6 +281,8 @@ def run_discovery():
                 "lastValidatedAt": timestamp,
                 "verificationStatus": found["status"],
                 "jobCount": found["jobCount"],
+                "relevantJobCount": found["relevantJobCount"],
+                "relevantTitles": found["relevantTitles"],
                 "consecutiveErrors": 0,
             })
         else:
@@ -259,7 +297,10 @@ def run_discovery():
         # Save after every single candidate, not just at the end.
         save_progress(resolved, unresolved)
 
+    relevant_count = sum(1 for c in resolved if c.get("relevantJobCount", 0) > 0)
     print(f"\nDone. {len(resolved)} verified, {len(unresolved)} unresolved.")
+    print(f"  Of the {len(resolved)} verified companies, {relevant_count} have at least one "
+          f"job that looks relevant to your target departments.")
     print(f"  Verified companies -> {OUTPUT_FILE}  (import this into the Job Explorer)")
     if unresolved:
         print(f"  Unresolved names   -> {UNRESOLVED_FILE}  (check these manually \u2014 the real "
@@ -296,6 +337,8 @@ def run_revalidate():
         if result["ok"]:
             company["verificationStatus"] = result["status"]
             company["jobCount"] = result["jobCount"]
+            company["relevantJobCount"] = result["relevantJobCount"]
+            company["relevantTitles"] = result["relevantTitles"]
             company["consecutiveErrors"] = 0
             if old_status == "dead":
                 came_back += 1
@@ -326,8 +369,11 @@ def run_revalidate():
 
         save_progress(resolved, unresolved)
 
+    relevant_count = sum(1 for c in resolved if c.get("relevantJobCount", 0) > 0)
     print(f"\nRevalidation done. {changed} changed, {went_dead} newly marked dead, "
           f"{came_back} came back to life.")
+    print(f"  {relevant_count} of {len(resolved)} tracked companies currently have at least "
+          f"one job that looks relevant to your target departments.")
     print(f"  Updated companies -> {OUTPUT_FILE}  (re-import into the Job Explorer to pick up changes)")
 
 
