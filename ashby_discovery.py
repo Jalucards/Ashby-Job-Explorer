@@ -25,6 +25,15 @@ just run it again — it picks up where it left off instead of starting
 over. To force a completely fresh run, delete ashby_discovery_progress.json
 first.
 
+RE-VALIDATING: companies you already found once can go stale — job counts
+change, and companies sometimes leave Ashby entirely. Run:
+    python3 ashby_discovery.py --revalidate
+to re-check every already-resolved company's real slug directly (no
+guessing needed, since the slug is already confirmed) and refresh its
+job count, status, and lastValidatedAt. A company that stops resolving
+gets marked "dead" rather than deleted, so you keep the history and can
+decide what to do with it in the main tool.
+
 This script does NOT search the web for new company names — it only
 validates candidates you already have. See the bottom of this file for
 notes on why, and what a "find new names" pass would require.
@@ -151,6 +160,14 @@ def load_progress():
             data = json.load(f)
         resolved = data.get("resolved", [])
         unresolved = data.get("unresolved", [])
+        # Older runs stored unresolved as a plain list of name strings, which
+        # threw away *why* each one failed. Upgrade those in place so
+        # re-running an old progress file doesn't lose anything going forward.
+        unresolved = [
+            {"name": u, "lastError": "unknown (from an earlier version of this script)", "checkedAt": None}
+            if isinstance(u, str) else u
+            for u in unresolved
+        ]
         return resolved, unresolved
     except FileNotFoundError:
         return [], []
@@ -167,17 +184,21 @@ def save_progress(resolved, unresolved):
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         json.dump({"companies": resolved}, f, indent=2)
     with open(UNRESOLVED_FILE, "w", encoding="utf-8") as f:
-        f.write("\n".join(unresolved))
+        # Human-scannable: name plus the reason it failed, one per line.
+        f.write("\n".join(f"{u['name']}  ({u['lastError']})" for u in unresolved))
 
 
-def main():
+def run_discovery():
     candidates = load_candidates(INPUT_FILE)
     if not candidates:
         print(f"{INPUT_FILE} is empty. Add some company names (one per line) and re-run.")
         sys.exit(1)
 
     resolved, unresolved = load_progress()
-    already_done = set(c["candidateName"].lower() for c in resolved) | set(n.lower() for n in unresolved)
+    already_done = (
+        set(c["candidateName"].lower() for c in resolved)
+        | set(u["name"].lower() for u in unresolved)
+    )
 
     remaining = [c for c in candidates if c.lower() not in already_done]
 
@@ -191,6 +212,8 @@ def main():
         print(f"  Verified companies -> {OUTPUT_FILE}")
         if unresolved:
             print(f"  Unresolved names   -> {UNRESOLVED_FILE}")
+        print(f"\nTip: to catch companies that changed since you found them (new jobs, or "
+              f"companies that left Ashby), run:  python3 {sys.argv[0]} --revalidate")
         return
 
     print(f"Checking {len(remaining)} candidate{'s' if len(remaining) != 1 else ''}...\n")
@@ -198,12 +221,14 @@ def main():
 
     for i, name in enumerate(remaining, 1):
         found = None
+        last_failure = None
         for variant in candidate_variants(name):
             result = check_slug(variant)
             time.sleep(REQUEST_DELAY_SECONDS)
             if result["ok"]:
                 found = {"slug": variant, **result}
                 break
+            last_failure = result["status"]
 
         timestamp = now_iso()
         progress_position = total - len(remaining) + i
@@ -223,8 +248,13 @@ def main():
                 "consecutiveErrors": 0,
             })
         else:
-            print(f"  [{progress_position}/{total}] FAIL  {name!r} \u2014 no working slug found")
-            unresolved.append(name)
+            print(f"  [{progress_position}/{total}] FAIL  {name!r} \u2014 no working slug found "
+                  f"(last attempt: {last_failure})")
+            unresolved.append({
+                "name": name,
+                "lastError": last_failure or "no variants attempted",
+                "checkedAt": timestamp,
+            })
 
         # Save after every single candidate, not just at the end.
         save_progress(resolved, unresolved)
@@ -234,6 +264,78 @@ def main():
     if unresolved:
         print(f"  Unresolved names   -> {UNRESOLVED_FILE}  (check these manually \u2014 the real "
               f"slug may not match any of the guessed variants)")
+
+
+def run_revalidate():
+    """
+    Re-checks every already-resolved company directly by its confirmed slug
+    (no variant guessing needed — we already know the real one). Updates
+    jobCount/status/lastValidatedAt in place. A company that stops resolving
+    is marked "dead" rather than removed, so the history is preserved and
+    it's your call what to do with it in the main tool (Clear Failed, etc).
+    """
+    resolved, unresolved = load_progress()
+    if not resolved:
+        print("Nothing to revalidate yet \u2014 run the script without --revalidate first "
+              "to build up a list of verified companies.")
+        return
+
+    print(f"Revalidating {len(resolved)} previously-found companies...\n")
+    changed = 0
+    went_dead = 0
+    came_back = 0
+
+    for i, company in enumerate(resolved, 1):
+        old_status = company.get("verificationStatus")
+        old_job_count = company.get("jobCount", 0)
+        result = check_slug(company["slug"])
+        time.sleep(REQUEST_DELAY_SECONDS)
+        timestamp = now_iso()
+        company["lastValidatedAt"] = timestamp
+
+        if result["ok"]:
+            company["verificationStatus"] = result["status"]
+            company["jobCount"] = result["jobCount"]
+            company["consecutiveErrors"] = 0
+            if old_status == "dead":
+                came_back += 1
+                print(f"  [{i}/{len(resolved)}] BACK  '{company['slug']}' is resolving again "
+                      f"({result['jobCount']} open jobs)")
+            elif old_job_count != result["jobCount"] or old_status != result["status"]:
+                changed += 1
+                print(f"  [{i}/{len(resolved)}] CHANGED '{company['slug']}': "
+                      f"{old_job_count} -> {result['jobCount']} jobs "
+                      f"({old_status} -> {result['status']})")
+            else:
+                print(f"  [{i}/{len(resolved)}] same  '{company['slug']}' "
+                      f"({result['jobCount']} open jobs, unchanged)")
+        else:
+            company["consecutiveErrors"] = company.get("consecutiveErrors", 0) + 1
+            # Only mark it dead after a couple of consecutive failures, since
+            # a single timeout or transient 5xx doesn't mean the company left
+            # Ashby — it might just mean Ashby's API had a bad moment.
+            if company["consecutiveErrors"] >= 2:
+                if old_status != "dead":
+                    went_dead += 1
+                    print(f"  [{i}/{len(resolved)}] DEAD  '{company['slug']}' has failed "
+                          f"{company['consecutiveErrors']} checks in a row ({result['status']})")
+                company["verificationStatus"] = "dead"
+            else:
+                print(f"  [{i}/{len(resolved)}] warn  '{company['slug']}' failed this check "
+                      f"({result['status']}) \u2014 will confirm dead if it fails again next run")
+
+        save_progress(resolved, unresolved)
+
+    print(f"\nRevalidation done. {changed} changed, {went_dead} newly marked dead, "
+          f"{came_back} came back to life.")
+    print(f"  Updated companies -> {OUTPUT_FILE}  (re-import into the Job Explorer to pick up changes)")
+
+
+def main():
+    if "--revalidate" in sys.argv:
+        run_revalidate()
+    else:
+        run_discovery()
 
 
 if __name__ == "__main__":
