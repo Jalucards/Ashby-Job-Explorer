@@ -23,9 +23,12 @@ USAGE
   just the NEW finds.
 
 OUTPUT
-  new_candidates.txt — one newly-discovered company name per line.
-  Feed this straight into ashby_discovery.py's candidates.txt to validate
-  and get an importable JSON file.
+  new_candidates.txt — one newly-discovered company name per line, for
+  reference / re-runs.
+
+  New finds are ALSO appended directly into candidates.txt — the exact
+  file ashby_discovery.py reads — so there's no manual copy step between
+  the two scripts anymore. Just run ashby_discovery.py next.
 """
 
 import json
@@ -34,9 +37,11 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 
 KNOWN_SLUGS_FILE = "known_slugs.txt"
 OUTPUT_FILE = "new_candidates.txt"
+CANDIDATES_FILE = "candidates.txt"  # the file ashby_discovery.py reads
 
 # How many of the most recent monthly Common Crawl indexes to search.
 # More = more thorough but slower. 6 covers roughly the last half-year
@@ -167,6 +172,37 @@ def load_known_slugs():
         return set()
 
 
+def append_to_candidates_file(new_slugs):
+    """
+    Feeds new finds straight into candidates.txt \u2014 the exact file
+    ashby_discovery.py reads \u2014 so the next step is just running that
+    script, with no manual copy/rename in between. Existing lines (and
+    comments) in candidates.txt are preserved; only genuinely new slugs
+    are appended, checked case-insensitively against what's already there.
+    """
+    try:
+        with open(CANDIDATES_FILE, "r", encoding="utf-8") as f:
+            existing_lines = [line.rstrip("\n") for line in f]
+    except FileNotFoundError:
+        existing_lines = []
+
+    existing_lower = set(line.strip().lower() for line in existing_lines if line.strip() and not line.strip().startswith("#"))
+    to_add = [s for s in new_slugs if s.lower() not in existing_lower]
+
+    if not to_add:
+        return 0
+
+    with open(CANDIDATES_FILE, "w", encoding="utf-8") as f:
+        f.write("\n".join(existing_lines))
+        if existing_lines and existing_lines[-1].strip():
+            f.write("\n")
+        f.write(f"# --- {len(to_add)} added by ashby_commoncrawl_discovery.py on {datetime.now(timezone.utc).isoformat()} ---\n")
+        f.write("\n".join(to_add))
+        f.write("\n")
+
+    return len(to_add)
+
+
 def main():
     known = load_known_slugs()
     if known:
@@ -189,11 +225,17 @@ def main():
     with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
         f.write("\n".join(new_slugs))
 
+    added_count = append_to_candidates_file(new_slugs)
+
     print(f"\nDone. Found {len(all_found)} total distinct slugs across all crawls searched.")
     print(f"{len(new_slugs)} are new (not in {KNOWN_SLUGS_FILE}) \u2014 written to {OUTPUT_FILE}.")
-    print("\nNext step: these are UNVALIDATED. Rename this file to candidates.txt (or point")
-    print("ashby_discovery.py at it) and run that script to confirm which ones are still live")
-    print("before importing anything into the Job Explorer.")
+    if added_count > 0:
+        print(f"{added_count} of those were appended straight into {CANDIDATES_FILE} \u2014 "
+              f"no manual copy step needed.")
+        print(f"\nNext step: run  python3 ashby_discovery.py  to validate them against "
+              f"Ashby's real API and score them for relevance before importing anything.")
+    else:
+        print(f"Nothing new to add to {CANDIDATES_FILE} \u2014 everything found was already there.")
 
 
 if __name__ == "__main__":
