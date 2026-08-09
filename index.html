@@ -1,0 +1,2464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ashby Job Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #0C0D16;
+    --surface: rgba(255,255,255,0.06);
+    --surface-strong: rgba(255,255,255,0.10);
+    --border: rgba(255,255,255,0.13);
+    --border-strong: rgba(255,255,255,0.24);
+    --text-primary: #F3F3FA;
+    --text-secondary: rgba(243,243,250,0.66);
+    --text-muted: rgba(243,243,250,0.42);
+    --accent: #8B7CF6;
+    --accent-dim: #7566E0;
+    --accent-bg: rgba(139,124,246,0.20);
+    --success: #3DDC97;
+    --success-bg: rgba(61,220,151,0.16);
+    --danger: #F87171;
+    --danger-bg: rgba(248,113,113,0.16);
+    --info: #60A5FA;
+    --neutral-bg: rgba(255,255,255,0.05);
+    --font-sans: 'Inter', -apple-system, sans-serif;
+    /* Spacing scale \u2014 used for consistent padding/gaps across cards */
+    --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px;
+    /* Radius scale */
+    --radius-sm: 8px; --radius: 12px; --radius-lg: 16px;
+    /* Avatar sizing \u2014 one token so job cards, company cards, and the sidebar all match */
+    --avatar-size: 36px; --avatar-radius: 10px;
+    /* Restrained blur \u2014 dialed back from a heavier glow for a cleaner, more
+       readable "premium SaaS" feel rather than a glossy/neon look. */
+    --blur: blur(16px);
+    --shadow-card: 0 1px 2px rgba(0,0,0,0.18), 0 6px 18px rgba(0,0,0,0.22);
+    --shadow-raised: 0 10px 26px rgba(0,0,0,0.32);
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg-base); scrollbar-width: thin; scrollbar-color: rgba(139,124,246,0.45) transparent; color-scheme: dark; }
+  select { color-scheme: dark; }
+  select option { background: #1B1C2C; color: var(--text-primary); }
+  *::-webkit-scrollbar { width: 9px; height: 9px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: rgba(139,124,246,0.35); border-radius: 20px; border: 2px solid transparent; background-clip: padding-box; }
+  *::-webkit-scrollbar-thumb:hover { background: rgba(139,124,246,0.6); background-clip: padding-box; }
+  *::-webkit-scrollbar-corner { background: transparent; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    background-color: var(--bg-base);
+    background-image:
+      radial-gradient(circle at 12% 18%, rgba(139,124,246,0.38), transparent 42%),
+      radial-gradient(circle at 88% 12%, rgba(236,72,153,0.28), transparent 45%),
+      radial-gradient(circle at 75% 85%, rgba(96,165,250,0.26), transparent 45%),
+      radial-gradient(circle at 20% 90%, rgba(61,220,151,0.16), transparent 40%);
+    background-attachment: fixed;
+    background-size: cover;
+  }
+  .app { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+  .sidebar {
+    min-width: 0;
+    background: rgba(18,18,30,0.55);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border-right: 1px solid var(--border);
+    padding: 22px 16px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .brand-row { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+  .brand-mark {
+    width: 32px; height: 32px; border-radius: 9px; flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent), #EC4899); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px;
+    box-shadow: 0 4px 14px rgba(139,124,246,0.45);
+  }
+  .brand-title { font-size: 15px; font-weight: 700; line-height: 1.2; }
+  .brand-sub { font-size: 11px; color: var(--text-muted); margin: 1px 0 0; }
+  .company-search {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 9px 12px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: var(--font-sans);
+    margin-bottom: 18px;
+  }
+  .company-search::placeholder { color: var(--text-muted); }
+  .company-search:focus { outline: none; border-color: var(--accent); background: var(--surface-strong); }
+  .nav-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin: 16px 0 8px;
+    font-weight: 700;
+  }
+  .add-company-row { display: flex; gap: 6px; margin-bottom: 6px; }
+  .add-company-row input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: var(--font-sans);
+    min-width: 0;
+  }
+  .add-company-row input::placeholder { color: var(--text-muted); }
+  .add-company-row input:focus { outline: none; border-color: var(--accent); }
+  .add-company-row button {
+    background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-weight: 700;
+    font-size: 15px;
+    width: 32px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .add-company-row button:hover { filter: brightness(1.1); }
+  .slug-hint { font-size: 11px; color: var(--text-muted); line-height: 1.5; margin: 4px 0 10px; }
+  .slug-hint code { background: var(--neutral-bg); padding: 1px 4px; border-radius: 4px; color: var(--text-secondary); }
+  .row-btns { display: flex; gap: 6px; margin-bottom: 6px; }
+  .row-btns .btn { flex: 1; font-size: 11px; padding: 7px 8px; }
+  .status-pills { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+  .status-pill {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+    padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--text-secondary);
+    cursor: pointer; white-space: nowrap;
+  }
+  .status-pill:hover { border-color: var(--border-strong); }
+  .status-pill.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+  .source-filter {
+    width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 7px 9px; color: var(--text-primary); font-size: 12px; font-family: var(--font-sans);
+    margin-bottom: 8px;
+  }
+  .source-filter:focus { outline: none; border-color: var(--accent); }
+  .bulk-action-bar { display: none; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .bulk-action-bar.visible { display: flex; }
+  .bulk-action-label { font-size: 11px; color: var(--text-muted); }
+  .bulk-action-buttons { display: flex; gap: 6px; }
+  .bulk-action-buttons button {
+    flex: 1; font-size: 11px; padding: 6px 4px; border-radius: 8px;
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-primary); cursor: pointer;
+  }
+  .bulk-action-buttons button:hover { border-color: var(--accent); color: var(--accent); }
+  .bulk-action-buttons button.danger:hover { border-color: var(--danger); color: var(--danger); }
+  .company-list { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+  .company-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px 7px 6px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    border-left: 3px solid transparent;
+  }
+  .company-row:hover { background: var(--surface); }
+  .company-row.filtered { background: var(--accent-bg); }
+  .company-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .dot-ok { background: var(--success); }
+  .dot-error { background: var(--danger); }
+  .dot-stale { background: #F0B94E; }
+  .dot-pending { background: var(--text-muted); }
+  .company-row-name {
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; font-weight: 500;
+    background: none; border: none; color: inherit; font-family: inherit; font-size: inherit; text-align: left; padding: 0;
+  }
+  .company-row-count { font-size: 10px; color: var(--text-muted); background: var(--neutral-bg); padding: 1px 6px; border-radius: 20px; }
+  .company-row-retry { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 0 2px; flex-shrink: 0; }
+  .company-row-retry:hover { color: var(--accent); }
+  .company-row-remove { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 13px; padding: 0 2px; flex-shrink: 0; }
+  .company-row-remove:hover { color: var(--danger); }
+  .sidebar-footer { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+  .btn {
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); background: var(--surface-strong); }
+
+  /* Accessibility: visible keyboard focus everywhere, and respect reduced-motion. */
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
+  textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-dim)); color: #fff; border-color: transparent; box-shadow: 0 6px 18px rgba(139,124,246,0.4); }
+  .btn-primary:hover { filter: brightness(1.08); color: #fff; }
+  .btn-block { width: 100%; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .main { min-width: 0; padding: 28px 32px 60px; }
+  .top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+  }
+  .page-title { font-size: 24px; font-weight: 800; margin: 0 0 4px; letter-spacing: -0.02em; }
+  .page-sub { font-size: 13px; color: var(--text-secondary); margin: 0; }
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+  }
+  .stat-card {
+    background: var(--surface);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow-card);
+  }
+  .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 8px; font-weight: 700; }
+  .stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+  .stat-value.accent-text { color: var(--accent); }
+  .stat-value.danger-text { color: var(--danger); }
+  .stat-delta { font-size: 11px; margin-top: 4px; color: var(--text-muted); }
+  .stat-delta.up { color: var(--success); }
+  .stat-delta.down { color: var(--danger); }
+  .stat-card.zero-state { opacity: 0.55; }
+  .stat-value.success-text { color: var(--success); }
+  .toolbar { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; align-items: center; }
+  .search-input, .filter-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 9px 12px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: var(--font-sans);
+  }
+  .search-input::placeholder, .filter-select::placeholder { color: var(--text-muted); }
+  .search-input { flex: 1 1 200px; min-width: 160px; }
+  .filter-select { flex: 1 1 130px; min-width: 110px; max-width: 220px; }
+  .search-input:focus, .filter-select:focus { outline: none; border-color: var(--accent); }
+  .toggle-row { display: flex; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--text-secondary); }
+  .toggle-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+
+  /* Custom dropdown — replaces native <select> popups, which Windows Chrome/Edge
+     render with the OS's own light theme regardless of page CSS. */
+  .custom-select-wrapper { position: relative; }
+  .custom-select-wrapper.toolbar-sizing { flex: 1 1 130px; min-width: 110px; max-width: 220px; }
+  .custom-select-wrapper.sidebar-sizing { width: 100%; margin-bottom: 8px; }
+  .custom-select-trigger {
+    width: 100%; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 9px 12px; color: var(--text-primary); font-size: 13px; font-family: var(--font-sans); cursor: pointer;
+  }
+  .custom-select-trigger:hover { border-color: var(--border-strong); }
+  .custom-select-trigger.open { border-color: var(--accent); }
+  .custom-select-trigger .chevron { font-size: 10px; color: var(--text-muted); flex-shrink: 0; }
+  .custom-select-dropdown {
+    display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 60;
+    background: rgba(22,22,36,0.94); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--border-strong); border-radius: 12px; padding: 4px; max-height: 240px; overflow-y: auto;
+    box-shadow: var(--shadow-raised);
+  }
+  .custom-select-dropdown.open { display: block; }
+  .custom-select-option {
+    padding: 8px 10px; border-radius: 8px; font-size: 13px; color: var(--text-primary); cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .custom-select-option:hover { background: var(--surface-strong); }
+  .custom-select-option.selected { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+
+  /* Job cards render in a responsive grid, ~3 per row on a typical desktop width */
+  .job-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; align-items: stretch; }
+  .job-row {
+    background: var(--surface);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  }
+  .job-row.closed { opacity: 0.5; box-shadow: none; }
+  .job-row:hover { border-color: var(--border-strong); box-shadow: var(--shadow-raised); transform: translateY(-2px); }
+  .job-card-header { display: flex; align-items: center; gap: 10px; }
+  .job-avatar {
+    width: var(--avatar-size); height: var(--avatar-size); border-radius: var(--avatar-radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+  .job-company-name { font-size: 12px; color: var(--text-secondary); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .job-main { flex: 1; min-width: 0; }
+  .job-title { font-size: 14px; font-weight: 600; line-height: 1.35; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .new-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; background: var(--success-bg); color: var(--success); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.03em; }
+  .closed-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; background: var(--neutral-bg); color: var(--text-muted); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.03em; }
+  .job-meta { font-size: 12px; color: var(--text-secondary); display: flex; gap: 8px; flex-wrap: wrap; }
+  .job-comp { font-size: 12px; color: var(--success); font-weight: 600; }
+  .job-comp.unconfirmed { color: #F0B94E; font-weight: 500; font-style: italic; cursor: help; }
+  .job-card-footer { margin-top: auto; padding-top: 4px; }
+
+  .mb-1 { margin-bottom: var(--space-1); }
+  .mb-2 { margin-bottom: var(--space-2); }
+  .mb-3 { margin-bottom: var(--space-3); }
+  .last-refreshed-sub { font-size: 11px; color: var(--text-muted); text-align: center; margin-bottom: 2px; min-height: 14px; }
+  .last-refreshed-sub.refreshing { color: var(--accent); }
+  @keyframes gentle-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+  .refreshing-pulse { animation: gentle-pulse 1.4s ease-in-out infinite; }
+
+  .view-mode-toggle {
+    display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 3px; gap: 2px; flex-shrink: 0;
+  }
+  .view-mode-btn {
+    background: none; border: none; color: var(--text-secondary); font-size: 12px; font-weight: 600;
+    padding: 6px 12px; border-radius: 6px; cursor: pointer; font-family: var(--font-sans);
+  }
+  .view-mode-btn.active { background: var(--accent-bg); color: var(--accent); }
+  .view-mode-btn:not(.active):hover { color: var(--text-primary); }
+
+  /* List display mode: same job-row markup, reflowed horizontally instead of stacked. */
+  .job-list.list-mode { display: flex; flex-direction: column; gap: var(--space-2); }
+  .job-list.list-mode .job-row {
+    flex-direction: row; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-4);
+  }
+  .job-list.list-mode .job-card-header { flex-shrink: 0; width: 160px; }
+  .job-list.list-mode .job-company-name { max-width: 110px; }
+  .job-list.list-mode .job-main { flex: 1; min-width: 0; }
+  .job-list.list-mode .job-title { font-size: 13px; }
+  .job-list.list-mode .job-meta { margin-top: 2px; }
+  .job-list.list-mode .job-comp { flex-shrink: 0; text-align: right; max-width: 210px; white-space: normal; line-height: 1.3; }
+  .job-list.list-mode .job-card-footer { margin-top: 0; flex-shrink: 0; width: auto; }
+  .job-list.list-mode .job-card-footer .job-link { width: auto; padding: 8px 18px; }
+  @media (max-width: 760px) {
+    .job-list.list-mode .job-row { flex-wrap: wrap; }
+    .job-list.list-mode .job-card-header { width: auto; }
+  }
+
+  .view-toggle {
+    display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 3px; gap: 2px;
+  }
+  .view-toggle-btn {
+    background: none; border: none; color: var(--text-secondary); font-size: 13px; font-weight: 600;
+    padding: 7px 14px; border-radius: 8px; cursor: pointer; font-family: var(--font-sans);
+  }
+  .view-toggle-btn.active { background: linear-gradient(135deg, var(--accent), var(--accent-dim)); color: #fff; }
+  .view-toggle-btn:not(.active):hover { color: var(--text-primary); }
+
+  .company-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .company-card {
+    background: var(--surface); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--border); border-radius: 16px; padding: 16px;
+    display: flex; flex-direction: column; gap: 10px;
+    box-shadow: var(--shadow-card); transition: box-shadow 0.15s ease, transform 0.15s ease;
+  }
+  .company-card:hover { box-shadow: var(--shadow-raised); transform: translateY(-2px); }
+  .company-card-header { display: flex; align-items: center; gap: 10px; }
+  .company-card-avatar {
+    width: var(--avatar-size); height: var(--avatar-size); border-radius: var(--avatar-radius); display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+  .company-card-name { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .company-card-meta { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+  .company-card-jobs { font-size: 13px; font-weight: 600; margin-top: auto; }
+  .company-card-jobs.zero { color: var(--text-muted); font-weight: 500; }
+  .company-card-jobs.some { color: var(--success); }
+  .job-link {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+    padding: 9px 15px;
+    border-radius: var(--radius);
+    text-decoration: none;
+    white-space: nowrap;
+    display: block;
+    text-align: center;
+  }
+  .job-link:hover { filter: brightness(1.08); }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); font-size: 13px; }
+  .company-card-grid .empty-state, .job-list .empty-state { grid-column: 1 / -1; }
+  .modal-md { max-width: 480px; }
+  .modal-lg { max-width: 620px; }
+  .empty-hint { padding: 10px 6px; font-size: 12px; color: var(--text-muted); }
+  .error-banner {
+    background: var(--danger-bg);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid rgba(248,113,113,0.35);
+    color: var(--danger);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 12px;
+    margin-bottom: 14px;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+  .error-banner-summary { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .error-banner-toggle { background: none; border: none; color: var(--danger); font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline; flex-shrink: 0; padding: 0; }
+  .error-banner-detail {
+    margin-top: 8px;
+    max-height: 160px;
+    overflow-y: auto;
+    padding-right: 4px;
+    line-height: 1.6;
+  }
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: rgba(20,20,32,0.85); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+    color: #fff; border: 1px solid var(--border-strong);
+    padding: 11px 18px; border-radius: 10px; font-size: 13px; display: none; z-index: 200; max-width: 500px; text-align: center;
+    box-shadow: var(--shadow-raised);
+  }
+  .toast.show { display: block; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(6,6,14,0.55); display: none; align-items: flex-start; justify-content: center; padding: 60px 20px; z-index: 100; overflow-y: auto; }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: rgba(22,22,36,0.75);
+    backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--border-strong); border-radius: 18px; padding: 24px; width: 100%; max-width: 420px; box-shadow: var(--shadow-raised);
+  }
+  .modal h3 { margin: 0 0 12px; font-size: 15px; }
+  .modal p.hint { font-size: 12px; color: var(--text-secondary); margin: 0 0 10px; }
+  .modal textarea, .modal input {
+    width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px; color: var(--text-primary); font-family: var(--font-sans); font-size: 12px; resize: vertical;
+    margin-bottom: 10px;
+  }
+  .modal textarea::placeholder, .modal input::placeholder { color: var(--text-muted); }
+  .modal textarea:focus, .modal input:focus { outline: none; border-color: var(--accent); background: var(--surface-strong); }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+  @media (max-width: 800px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .job-list { grid-template-columns: 1fr; }
+  }
+</style>
+
+</head>
+<body>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="brand-row">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-title">Ashby Job Explorer</div>
+        <p class="brand-sub">Aggregated postings, single page</p>
+      </div>
+    </div>
+    <input class="company-search" id="companySearchInput" placeholder="Search tracked companies..." aria-label="Search tracked companies">
+
+    <div class="nav-label">Add a company</div>
+    <div class="add-company-row">
+      <input id="companyInput" placeholder="e.g. ramp" aria-label="Company slug to add">
+      <button id="addCompanyBtn">+</button>
+    </div>
+    <p class="slug-hint">
+      Find the slug in the company's Ashby URL:<br>
+      <code>jobs.ashbyhq.com/<b>slug</b></code>
+    </p>
+    <button id="moreAddOptionsToggle" class="btn btn-block mb-2">More ways to add</button>
+    <div id="moreAddOptions" style="display:none;">
+      <div class="row-btns">
+        <button class="btn" id="bulkAddBtn">Bulk add</button>
+        <button class="btn" id="seedBtn">Starter list</button>
+      </div>
+      <div class="row-btns">
+        <button class="btn" id="communityListBtn">Community list</button>
+        <button class="btn" id="importCompaniesBtn">Import list</button>
+      </div>
+    </div>
+    <input type="file" id="importCompaniesFile" accept="application/json" style="display:none;">
+
+    <div class="nav-label">Tracked companies (<span id="companyCount">0</span>)</div>
+    <div class="status-pills" id="statusPills"></div>
+    <select class="source-filter" id="sourceFilterSelect"><option value="all">All sources</option></select>
+    <div class="bulk-action-bar" id="bulkActionBar"></div>
+    <button id="toggleCompanyListBtn" class="btn btn-block mb-2">Show list</button>
+    <div class="company-list" id="companyList"></div>
+
+    <div class="sidebar-footer">
+      <div class="last-refreshed-sub" id="sidebarRefreshStatus"></div>
+      <button id="manageDataToggle" class="btn btn-block mb-2">Manage data</button>
+      <div id="manageDataPanel" style="display:none;">
+        <div class="row-btns">
+          <button class="btn" id="exportCompaniesBtn">Export list</button>
+          <button class="btn" id="retryFailedBtn">Retry failed</button>
+        </div>
+        <div class="row-btns">
+          <button class="btn" id="clearFailedBtn">Clear failed</button>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="refreshBtn">Refresh all</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="top-row">
+      <div>
+        <p class="page-title" id="pageTitle">Open Roles</p>
+        <p class="page-sub" id="lastFetchedSub">Add a company slug to get started.</p>
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <div class="view-toggle">
+          <button class="view-toggle-btn active" id="jobsViewBtn">Jobs</button>
+          <button class="view-toggle-btn" id="companiesViewBtn">Companies</button>
+        </div>
+        <button class="btn" id="historyBtn">History</button>
+        <button class="btn" id="savedSearchBtn">Saved filters</button>
+        <button class="btn" id="exportBtn">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Companies</div><div class="stat-value" id="statCompanies">0</div></div>
+      <div class="stat-card">
+        <div class="stat-label">Open jobs</div>
+        <div class="stat-value accent-text" id="statJobs">0</div>
+        <div class="stat-delta" id="statJobsDelta"></div>
+      </div>
+      <div class="stat-card"><div class="stat-label">New this refresh</div><div class="stat-value success-text" id="statNew">0</div></div>
+      <div class="stat-card"><div class="stat-label">Matching filter</div><div class="stat-value" id="statMatching">0</div></div>
+      <div class="stat-card" id="statErrorsCard"><div class="stat-label">Fetch errors</div><div class="stat-value danger-text" id="statErrors">0</div></div>
+    </div>
+
+    <div id="errorBanner"></div>
+
+    <div id="jobsViewContainer">
+      <div class="toolbar">
+        <input class="search-input" id="searchInput" placeholder="Search title or company..." aria-label="Search job title or company">
+        <input class="filter-select" id="deptFilter" list="deptOptions" placeholder="Department contains..." aria-label="Filter by department">
+        <datalist id="deptOptions"></datalist>
+        <select id="countryFilterSelect"><option value="all">All countries</option></select>
+        <select id="regionFilterSelect"><option value="all">All states/cities</option></select>
+        <select class="filter-select" id="savedFilterSelect"><option value="none">No saved filter</option></select>
+        <select class="filter-select" id="sortSelect">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="company">By company</option>
+        </select>
+        <div class="view-mode-toggle" role="group" aria-label="Job display mode">
+          <button type="button" class="view-mode-btn active" id="jobsGridModeBtn">Grid</button>
+          <button type="button" class="view-mode-btn" id="jobsListModeBtn">List</button>
+        </div>
+      </div>
+      <div class="toggle-row">
+        <label><input type="checkbox" id="newOnlyToggle"> New since last refresh only</label>
+        <label><input type="checkbox" id="showClosedToggle"> Show closed/removed postings</label>
+        <label><input type="checkbox" id="closedThisRefreshToggle"> Closed since last refresh only</label>
+      </div>
+
+      <div class="job-list" id="jobList"></div>
+    </div>
+
+    <div id="companiesViewContainer" style="display:none;">
+      <div class="toolbar">
+        <input class="search-input" id="companiesViewSearch" placeholder="Search companies..." aria-label="Search companies">
+        <select id="companiesViewSort">
+          <option value="recent">Recently updated</option>
+          <option value="jobs">Most open jobs</option>
+          <option value="alpha">Alphabetical</option>
+          <option value="added">Recently added</option>
+        </select>
+      </div>
+      <div id="companiesViewPills" class="status-pills mb-3"></div>
+      <div class="company-card-grid" id="companyCardGrid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="bulkModal">
+  <div class="modal">
+    <h3>Bulk add companies</h3>
+    <p class="hint">One slug per line, or comma-separated. Full jobs.ashbyhq.com URLs work too.</p>
+    <textarea id="bulkTextarea" style="min-height:140px;" aria-label="Company slugs, one per line or comma-separated" placeholder="ramp
+notion
+linear"></textarea>
+    <div class="modal-actions">
+      <button class="btn" id="bulkCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="bulkSubmitBtn">Add all</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="savedModal">
+  <div class="modal modal-md">
+    <h3>Saved keyword filter</h3>
+    <p class="hint">Match is title-based. Comma-separated keywords.</p>
+    <input id="savedName" placeholder="Filter name, e.g. AML / Investigations" aria-label="Filter name">
+    <input id="savedInclude" placeholder="Include keywords (any match): aml, investigator, compliance" aria-label="Include keywords">
+    <input id="savedExclude" placeholder="Exclude keywords: senior, director, engineer" aria-label="Exclude keywords">
+    <button id="resumeSectionToggle" class="btn btn-block mb-2">Suggest keywords from a resume</button>
+    <div id="resumeSection" style="display:none;">
+      <p class="hint">Paste resume text below. This only scans for job-role/function phrases that could realistically appear in a job title — skills and tools (like specific software or languages) are left out, since the filter only matches titles, not full descriptions.</p>
+
+      <textarea id="resumeText" style="min-height:120px;" placeholder="Paste resume text here..." aria-label="Resume text"></textarea>
+      <button id="resumeExtractBtn" class="btn btn-block mb-3">Suggest include keywords</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" id="savedCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="savedSubmitBtn">Save filter</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="historyModal">
+  <div class="modal modal-lg">
+    <h3>Refresh history</h3>
+    <p class="hint">One entry per full "Refresh all" run. Partial refreshes (retry-failed, single company) aren't logged here.</p>
+    <div id="historyModalBody" style="max-height: 420px; overflow-y: auto;"></div>
+    <div class="modal-actions">
+      <button class="btn" id="historyCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const COMPANIES_KEY = 'ashby_explorer_companies';
+const CACHE_KEY = 'ashby_explorer_cache';
+const SAVED_FILTERS_KEY = 'ashby_explorer_saved_filters';
+const REFRESH_BATCH_SIZE = 10;
+const FETCH_TIMEOUT_MS = 12000;
+
+let companies = [];      // [{ slug }]
+let cache = {};          // { slug: { jobs: [normalized...], fetchedAt, error, stale } }
+let savedFilters = [];   // [{ name, include: [], exclude: [] }]
+let companyFilter = null;
+let lastRefreshAt = null;
+let lastRefreshStartTime = null;
+let isRefreshing = false;
+let refreshHistory = [];
+const REFRESH_HISTORY_KEY = 'ashby_explorer_refresh_history';
+const REFRESH_HISTORY_MAX = 60;
+
+function loadRefreshHistory() {
+  try { refreshHistory = JSON.parse(localStorage.getItem(REFRESH_HISTORY_KEY)) || []; }
+  catch (e) { refreshHistory = []; }
+}
+
+function recordRefreshHistory(entry) {
+  refreshHistory.push(entry);
+  if (refreshHistory.length > REFRESH_HISTORY_MAX) {
+    refreshHistory = refreshHistory.slice(-REFRESH_HISTORY_MAX);
+  }
+  try {
+    localStorage.setItem(REFRESH_HISTORY_KEY, JSON.stringify(refreshHistory));
+  } catch (e) {
+    console.error('refresh history save failed', e);
+  }
+}
+
+const AVATAR_COLORS = ['#D7A93B','#7699BA','#67AD7C','#D06A5C','#A78BC9','#5FAFA8','#C77BA0','#B8935F'];
+const STARTER_LIST = ['openai','notion','ramp','linear','cursor','elevenlabs','replit','supabase','posthog','substack','mercury','vercel','deel'];
+
+// Sourced from ambicuity/New-Grad-Jobs (github.com/ambicuity/New-Grad-Jobs), a maintained
+// open config listing companies hiring via Ashby. Names as published \u2014 not all will
+// resolve to the exact live slug, and failures are handled the same as any other bad slug.
+const COMMUNITY_LIST = ['Airbyte','Anyscale','Ashby','Astronomer','Attio','Baseten','Browserbase','Campfire','Cohere','Commure','cradlebio','Crusoe','Cursor','Decagon','Docker','ElevenLabs','LangChain','Linear','Lovable','mistral.ai','Modal','Notion','OpenAI','Perplexity','Pinecone','Plaid','Poolside','Prefect','Qualified','Railway','Reka','Runway','Sentry','Sierra','Snowflake','Statsig','Stytch','Suno','Supabase','Turbopuffer','Vapi','Warp','Weaviate'];
+
+function esc(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function avatarColor(name) {
+  let sum = 0;
+  for (let i = 0; i < name.length; i++) sum += name.charCodeAt(i);
+  return AVATAR_COLORS[sum % AVATAR_COLORS.length];
+}
+function initials(name) { return name.trim().slice(0, 2).toUpperCase(); }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4000);
+}
+function debounce(fn, delay = 150) {
+  let timeout;
+  return (...args) => { clearTimeout(timeout); timeout = setTimeout(() => fn(...args), delay); };
+}
+
+// Replaces a native <select>'s dropdown popup with a custom-styled one matching
+// the page theme. The original <select> stays in the DOM (hidden) as the source
+// of truth \u2014 its .value, addEventListener('change', ...), and any code that
+// repopulates its <option> list all keep working exactly as before. Call
+// refreshCustomSelectDisplay(select) after repopulating a select's options so
+// the visible trigger/dropdown stay in sync.
+function enhanceSelect(selectId, sizingClass) {
+  const select = document.getElementById(selectId);
+  if (!select || select.dataset.enhanced) return;
+  select.dataset.enhanced = 'true';
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'custom-select-wrapper ' + sizingClass;
+  select.parentNode.insertBefore(wrapper, select);
+  wrapper.appendChild(select);
+  select.style.display = 'none';
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'custom-select-trigger';
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+  wrapper.appendChild(trigger);
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'custom-select-dropdown';
+  dropdown.setAttribute('role', 'listbox');
+  wrapper.appendChild(dropdown);
+
+  function syncTrigger() {
+    const opt = select.options[select.selectedIndex];
+    trigger.innerHTML = `<span>${esc(opt ? opt.textContent : '')}</span><span class="chevron" aria-hidden="true">\u25BE</span>`;
+  }
+
+  function optionItems() { return Array.from(dropdown.querySelectorAll('.custom-select-option')); }
+
+  function selectOption(opt, item) {
+    select.value = opt.value;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    syncTrigger();
+    close();
+    trigger.focus();
+  }
+
+  function buildOptions() {
+    dropdown.innerHTML = '';
+    Array.from(select.options).forEach((opt, i) => {
+      const isSelected = opt.value === select.value;
+      const item = document.createElement('div');
+      item.className = 'custom-select-option' + (isSelected ? ' selected' : '');
+      item.textContent = opt.textContent;
+      item.setAttribute('role', 'option');
+      item.setAttribute('aria-selected', String(isSelected));
+      item.tabIndex = isSelected ? 0 : -1; // roving tabindex: only one option is Tab-reachable at a time
+      item.addEventListener('click', () => selectOption(opt, item));
+      item.addEventListener('keydown', (e) => {
+        const items = optionItems();
+        const idx = items.indexOf(item);
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          const nextIdx = e.key === 'ArrowDown'
+            ? Math.min(idx + 1, items.length - 1)
+            : Math.max(idx - 1, 0);
+          items.forEach(it => it.tabIndex = -1);
+          items[nextIdx].tabIndex = 0;
+          items[nextIdx].focus();
+        } else if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectOption(opt, item);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          close();
+          trigger.focus();
+        } else if (e.key === 'Tab') {
+          close();
+        }
+      });
+      dropdown.appendChild(item);
+    });
+  }
+
+  function open() {
+    buildOptions();
+    dropdown.classList.add('open');
+    trigger.classList.add('open');
+    trigger.setAttribute('aria-expanded', 'true');
+    const selected = dropdown.querySelector('.custom-select-option.selected') || dropdown.querySelector('.custom-select-option');
+    if (selected) selected.focus();
+  }
+  function close() {
+    dropdown.classList.remove('open');
+    trigger.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
+  }
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    dropdown.classList.contains('open') ? close() : open();
+  });
+  trigger.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      open();
+    }
+  });
+  document.addEventListener('click', close);
+
+  syncTrigger();
+  wrapper._syncCustomSelect = syncTrigger;
+}
+
+function refreshCustomSelectDisplay(select) {
+  const wrapper = select && select.parentElement;
+  if (wrapper && wrapper._syncCustomSelect) wrapper._syncCustomSelect();
+}
+
+// ---------- persistence ----------
+
+// ---------- job cache storage (IndexedDB) ----------
+// localStorage has a hard ~5-10MB per-origin cap that a large tracked-company
+// list blows through fast. The job cache (the bulk of the data) lives in
+// IndexedDB instead, which has a much larger practical limit (typically
+// hundreds of MB+, tied to available disk space). Companies and saved
+// filters are small and stay in localStorage \u2014 no need to move those.
+
+const IDB_NAME = 'AshbyExplorerDB';
+const IDB_STORE = 'kv';
+let idbOpenPromise = null;
+
+function openIDB() {
+  if (idbOpenPromise) return idbOpenPromise;
+  idbOpenPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return idbOpenPromise;
+}
+
+async function idbGet(key) {
+  const db = await openIDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbSet(key, value) {
+  const db = await openIDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function loadState() {
+  try { companies = JSON.parse(localStorage.getItem(COMPANIES_KEY)) || []; } catch (e) { companies = []; }
+  try { savedFilters = JSON.parse(localStorage.getItem(SAVED_FILTERS_KEY)) || []; } catch (e) { savedFilters = []; }
+  loadRefreshHistory();
+
+  try {
+    cache = (await idbGet('cache')) || {};
+  } catch (e) {
+    console.error('failed to load job cache from IndexedDB', e);
+    cache = {};
+  }
+
+  // One-time migration: earlier versions of this tool stored the job cache in
+  // localStorage. If IndexedDB is empty but old localStorage cache data
+  // exists, pull it in once so refreshing this file doesn't lose everything
+  // already fetched, then clear the old copy out of localStorage.
+  if (Object.keys(cache).length === 0) {
+    try {
+      const legacyRaw = localStorage.getItem(CACHE_KEY);
+      if (legacyRaw) {
+        const legacyCache = JSON.parse(legacyRaw);
+        if (legacyCache && Object.keys(legacyCache).length > 0) {
+          cache = legacyCache;
+          await idbSet('cache', cache);
+          localStorage.removeItem(CACHE_KEY);
+        }
+      }
+    } catch (e) {
+      console.error('legacy cache migration failed', e);
+    }
+  }
+}
+
+function persistState() {
+  try {
+    localStorage.setItem(COMPANIES_KEY, JSON.stringify(companies));
+  } catch (e) {
+    console.error('companies save failed', e);
+    showToast("Couldn't save your company list \u2014 local storage may be full.");
+  }
+  try {
+    localStorage.setItem(SAVED_FILTERS_KEY, JSON.stringify(savedFilters));
+  } catch (e) {
+    console.error('saved filters save failed', e);
+  }
+  idbSet('cache', cache).catch(e => {
+    console.error('cache save failed', e);
+    showToast("Couldn't save the job cache. Your browser's storage may be full \u2014 try Export list as a backup of your company list.");
+  });
+}
+
+// ---------- job normalization ----------
+
+// Fallback for postings where the company never used Ashby's structured
+// compensation field, but wrote a salary figure into the free-text
+// description instead (common \u2014 benefits bullet lists, etc). Requires a
+// dollar RANGE (two figures with a dash between them), not just any dollar
+// mention, to avoid false positives like "$145 trillion market" showing up
+// as if it were a salary. Never stores the full description text \u2014 only
+// the short extracted result, if any.
+function extractCompensationFromText(text) {
+  if (!text) return null;
+  // Two capture groups (number + optional k-suffix) per side, so the k-suffix
+  // can be checked per-number rather than losing that context in a flat match.
+  const rangePattern = /\$\s?([\d,]+(?:\.\d+)?)\s?([kK]?)\s?(?:-|\u2013|\u2014|to)\s?\$\s?([\d,]+(?:\.\d+)?)\s?([kK]?)(?!\s*(?:trillion|billion))/;
+  const match = text.match(rangePattern);
+  if (!match) return null;
+
+  // Small figures (2-3 digits, no k-suffix) are only plausible as hourly
+  // wages, not annual salary \u2014 accept them ONLY when an hourly cue
+  // ("hour", "hourly", "/hr", "per hour") appears near the match. Without
+  // that context, a small number is more likely unrelated noise.
+  const contextWindow = text.slice(Math.max(0, match.index - 30), match.index + match[0].length + 40).toLowerCase();
+  const hasHourlyContext = /\b(hour|hourly|\/\s?hr)\b/.test(contextWindow);
+
+  function plausible(num, kSuffix) {
+    const digits = num.replace(/,/g, '');
+    if (kSuffix) return digits.length >= 1;
+    if (digits.length >= 4) return true;
+    const value = parseInt(digits, 10);
+    return hasHourlyContext && value >= 7 && value <= 500;
+  }
+  if (!plausible(match[1], match[2]) || !plausible(match[3], match[4])) return null;
+
+  return match[0].replace(/\s+/g, ' ').trim();
+}
+
+function normalizeJob(job) {
+  const structuredComp = job.compensation && job.compensation.compensationTierSummary
+    ? job.compensation.compensationTierSummary
+    : '';
+  let compensation = structuredComp;
+  let compensationUnconfirmed = false;
+  if (!structuredComp) {
+    const extracted = extractCompensationFromText(job.descriptionPlain || '');
+    if (extracted) {
+      compensation = extracted;
+      compensationUnconfirmed = true;
+    }
+  }
+  return {
+    title: job.title || '',
+    location: job.locationName || job.location || '',
+    department: job.department || '',
+    team: job.team || '',
+    employmentType: job.employmentType || '',
+    isRemote: Boolean(job.isRemote),
+    publishedAt: job.publishedAt || null,
+    jobUrl: job.jobUrl || job.applyUrl || '',
+    compensation,
+    compensationUnconfirmed,
+  };
+}
+function jobKey(job, slug) {
+  return job.jobUrl || `${slug}|${job.title}|${job.location}|${job.department}`;
+}
+
+// ---------- fetching ----------
+
+async function fetchCompany(slug) {
+  const previous = cache[slug];
+  const attemptedAt = Date.now();
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  let incoming = null;
+  let errorMsg = null;
+
+  try {
+    const url = `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(slug)}?includeCompensation=true`;
+    const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status} \u2014 check the slug is correct`);
+    const data = await res.json();
+    incoming = (Array.isArray(data.jobs) ? data.jobs : []).filter(j => j && j.isListed !== false);
+  } catch (e) {
+    errorMsg = e.name === 'AbortError' ? 'Request timed out' : (e.message || 'Request failed (network/CORS)');
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  if (errorMsg) {
+    // Preserve last-known-good jobs on failure; mark stale instead of wiping.
+    cache[slug] = {
+      jobs: previous && previous.jobs ? previous.jobs : [],
+      fetchedAt: previous ? previous.fetchedAt : null,
+      lastAttemptAt: attemptedAt,
+      error: errorMsg,
+      stale: Boolean(previous && previous.jobs && previous.jobs.length)
+    };
+    return;
+  }
+
+  const prevJobs = (previous && previous.jobs) || [];
+  const prevByKey = new Map(prevJobs.map(j => [jobKey(j, slug), j]));
+  const seenKeys = new Set();
+
+  const merged = incoming.map(rawJob => {
+    const norm = normalizeJob(rawJob);
+    const key = jobKey(norm, slug);
+    seenKeys.add(key);
+    const prev = prevByKey.get(key);
+    return {
+      ...norm,
+      firstSeenAt: prev ? prev.firstSeenAt : attemptedAt,
+      lastSeenAt: attemptedAt,
+      status: 'open',
+      closedAt: null,
+      isNew: !prev
+    };
+  });
+
+  // Jobs that existed before but weren't in this fetch are now closed/removed.
+  prevJobs.forEach(prevJob => {
+    const key = jobKey(prevJob, slug);
+    if (!seenKeys.has(key) && prevJob.status !== 'closed') {
+      merged.push({ ...prevJob, status: 'closed', closedAt: attemptedAt, isNew: false });
+    } else if (!seenKeys.has(key) && prevJob.status === 'closed') {
+      merged.push({ ...prevJob, isNew: false });
+    }
+  });
+
+  cache[slug] = { jobs: merged, fetchedAt: attemptedAt, lastAttemptAt: attemptedAt, error: null, stale: false };
+}
+
+function formatDuration(ms) {
+  const totalSeconds = Math.round(ms / 1000);
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes < 60) return `${minutes}m ${seconds}s`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ${minutes % 60}m`;
+}
+
+function formatRelativeTime(timestamp) {
+  if (!timestamp) return null;
+  const diffMs = Date.now() - timestamp;
+  const seconds = Math.round(diffMs / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.round(hours / 24);
+  return `${days}d ago`;
+}
+
+function setSidebarRefreshStatus(text, refreshing) {
+  const el = document.getElementById('sidebarRefreshStatus');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.toggle('refreshing', !!refreshing);
+  el.classList.toggle('refreshing-pulse', !!refreshing);
+}
+
+async function refreshAll(slugList) {
+  const targets = slugList || companies.filter(c => c.enabled !== false).map(c => c.slug);
+  if (targets.length === 0) { showToast('Add or enable a company first.'); return; }
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  isRefreshing = true;
+
+  const startTime = Date.now();
+  const isFullRefresh = !slugList; // partial refreshes (retry-failed, single company) don't count as a history snapshot
+  if (isFullRefresh) lastRefreshStartTime = startTime;
+  let completedCount = 0;
+
+  for (let i = 0; i < targets.length; i += REFRESH_BATCH_SIZE) {
+    const batch = targets.slice(i, i + REFRESH_BATCH_SIZE);
+    const doneBeforeThisBatch = completedCount;
+
+    // Estimate is based on actual observed pace so far this run, not a guess
+    // \u2014 skipped on the very first batch since there's no pace to measure yet.
+    let eta = '';
+    if (doneBeforeThisBatch > 0) {
+      const msPerCompany = (Date.now() - startTime) / doneBeforeThisBatch;
+      const remaining = targets.length - doneBeforeThisBatch;
+      eta = ` (~${formatDuration(msPerCompany * remaining)} left)`;
+    }
+    const progressLabel = `Fetching ${Math.min(i + batch.length, targets.length)}/${targets.length}${eta}...`;
+    btn.textContent = progressLabel;
+    setSidebarRefreshStatus(progressLabel, true);
+
+    await Promise.allSettled(batch.map(slug => fetchCompany(slug)));
+    completedCount = Math.min(i + batch.length, targets.length);
+    persistState();
+    render();
+  }
+
+  lastRefreshAt = Date.now();
+
+  if (isFullRefresh) {
+    const finished = allJobs();
+    const openCount = finished.filter(j => j.status !== 'closed').length;
+    const newCount = finished.filter(j => j.isNew).length;
+    const closedThisRun = finished.filter(j => j.status === 'closed' && j.closedAt && j.closedAt >= startTime).length;
+    recordRefreshHistory({ timestamp: lastRefreshAt, openCount, newCount, closedThisRun });
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Refresh all';
+  isRefreshing = false;
+  setSidebarRefreshStatus('Last refreshed just now', false);
+  showToast(`Refresh complete in ${formatDuration(Date.now() - startTime)}.`);
+}
+
+// ---------- company management ----------
+
+const AUTO_REFRESH_IMPORT_LIMIT = 20;
+const JOB_BATCH_SIZE = 200; // job cards rendered per page \u2014 keeps the DOM light even
+                             // at tens of thousands of matching jobs
+
+// Ashby board names are case-sensitive (e.g. "OpenSea" \u2260 "opensea"),
+// so we preserve the entered/URL-decoded case and only compare case-insensitively.
+function companyKey(slug) { return slug.trim().toLowerCase(); }
+
+function parseSlugInput(raw) {
+  const value = raw.trim().replace(/,+$/, '');
+  if (!value) return '';
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const url = new URL(value);
+      if (url.hostname.toLowerCase() !== 'jobs.ashbyhq.com') return '';
+      const part = url.pathname.split('/').filter(Boolean)[0];
+      return part ? decodeURIComponent(part) : '';
+    } catch (e) { return ''; }
+  }
+  return value.replace(/^\/+|\/+$/g, '');
+}
+
+// Pulls every jobs.ashbyhq.com URL out of arbitrary pasted text (sheet exports,
+// header rows, trailing commas, junk columns). Falls back to line/comma-split
+// bare slugs if no full URLs are found.
+function extractCandidates(text) {
+  const urlMatches = text.match(/https?:\/\/jobs\.ashbyhq\.com\/[^\s"',]+/gi) || [];
+  if (urlMatches.length > 0) return urlMatches;
+  return text.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+}
+
+function addCompany() {
+  const input = document.getElementById('companyInput');
+  const slug = parseSlugInput(input.value);
+  if (!slug) { showToast('Enter a valid Ashby URL or board name.'); return; }
+  if (companies.some(c => companyKey(c.slug) === companyKey(slug))) { showToast('Already tracking that company.'); return; }
+  companies.push({ slug, enabled: true, source: 'manual', addedAt: Date.now() });
+  input.value = '';
+  persistState();
+  render();
+  fetchCompany(slug).then(() => { persistState(); render(); });
+}
+
+function addSlugBatch(rawList, defaultSource) {
+  let added = 0, duplicates = 0, invalid = 0;
+  const newSlugs = [];
+  const existing = new Set(companies.map(c => companyKey(c.slug)));
+  const timestamp = Date.now();
+
+  rawList.forEach(item => {
+    const isRecord = item && typeof item === 'object';
+    const raw = isRecord ? item.slug : item;
+    const slug = parseSlugInput(String(raw || ''));
+    if (!slug) { invalid++; return; }
+    const key = companyKey(slug);
+    if (existing.has(key)) { duplicates++; return; }
+
+    companies.push({
+      slug,
+      enabled: true,
+      source: (isRecord && item.source) || defaultSource || 'bulk-paste',
+      addedAt: (isRecord && item.addedAt) || timestamp,
+      ...(isRecord && item.verificationStatus ? { verificationStatus: item.verificationStatus } : {}),
+      ...(isRecord && typeof item.jobCount === 'number' ? { discoveryJobCount: item.jobCount } : {}),
+      ...(isRecord && item.candidateName ? { candidateName: item.candidateName } : {}),
+    });
+    existing.add(key);
+    newSlugs.push(slug);
+    added++;
+  });
+
+  persistState();
+  render();
+
+  if (added === 0) { showToast(`Nothing new to add (${duplicates} duplicate${duplicates === 1 ? '' : 's'}${invalid ? `, ${invalid} invalid` : ''}).`); return; }
+
+  const summary = `${added} added${duplicates ? `, ${duplicates} duplicate${duplicates === 1 ? '' : 's'} skipped` : ''}${invalid ? `, ${invalid} invalid` : ''}`;
+
+  if (added <= AUTO_REFRESH_IMPORT_LIMIT) {
+    showToast(summary + ' \u2014 fetching now...');
+    refreshAll(newSlugs);
+  } else {
+    showToast(summary + ' \u2014 click Refresh all when ready (large import, not auto-fetched).');
+  }
+}
+
+function removeCompany(slug) {
+  if (!confirm(`Stop tracking "${slug}"? This also clears its cached jobs.`)) return;
+  companies = companies.filter(c => c.slug !== slug);
+  delete cache[slug];
+  if (companyFilter === slug) companyFilter = null;
+  persistState();
+  render();
+}
+
+function toggleCompanyEnabled(slug) {
+  const c = companies.find(c => c.slug === slug);
+  if (!c) return;
+  c.enabled = c.enabled === false ? true : false;
+  persistState();
+  render();
+}
+
+function retryFailed() {
+  const failed = companies.filter(c => cache[c.slug] && cache[c.slug].error).map(c => c.slug);
+  if (failed.length === 0) { showToast('No failed companies to retry.'); return; }
+  refreshAll(failed);
+}
+
+function clearFailedCompanies() {
+  // Only clear companies that have never returned a job \u2014 a company with a
+  // stale-but-valid cache (previously worked, this refresh failed) is kept.
+  const failed = companies.filter(c => {
+    const entry = cache[c.slug];
+    return entry && entry.error && (!entry.jobs || entry.jobs.length === 0);
+  });
+  if (failed.length === 0) { showToast('No dead companies to clear (failed-with-history companies are kept).'); return; }
+  if (!confirm(`Remove ${failed.length} compan${failed.length === 1 ? 'y' : 'ies'} that never fetched any jobs (likely bad or dead slugs)? This can't be undone.`)) return;
+  const failedSlugs = new Set(failed.map(c => c.slug));
+  companies = companies.filter(c => !failedSlugs.has(c.slug));
+  failedSlugs.forEach(slug => delete cache[slug]);
+  if (companyFilter && failedSlugs.has(companyFilter)) companyFilter = null;
+  persistState();
+  render();
+  showToast(`Removed ${failed.length} dead compan${failed.length === 1 ? 'y' : 'ies'}.`);
+}
+
+function exportCompanies() {
+  const blob = new Blob([JSON.stringify({ companies, savedFilters }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ashby-explorer-companies-' + new Date().toISOString().slice(0, 10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Company list exported.');
+}
+
+function importCompanies(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      const list = Array.isArray(parsed) ? parsed : parsed.companies;
+      if (!Array.isArray(list)) throw new Error('bad format');
+      const validCount = list.filter(c => (typeof c === 'string' && c) || (c && typeof c === 'object' && c.slug)).length;
+      if (!confirm(`Import ${validCount} companies? This merges with your current list.`)) return;
+      if (parsed.savedFilters && Array.isArray(parsed.savedFilters)) {
+        parsed.savedFilters.forEach(f => { if (!savedFilters.some(sf => sf.name === f.name)) savedFilters.push(f); });
+      }
+      // Pass full records through (not just slugs) so provenance from richer
+      // exports/discovery-script output survives the import.
+      addSlugBatch(list, 'file-import');
+    } catch (err) {
+      showToast("That file doesn't look like a valid company list.");
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ---------- saved keyword filters ----------
+
+// ---------- resume keyword suggestion ----------
+// Deliberately limited to job ROLE/FUNCTION phrases, not skills or tools
+// (e.g. "account executive" not "Salesforce", "compliance officer" not
+// "AML training"). The saved filter only matches job titles, and skills
+// almost never appear in a title, so including them would just be noise.
+// Multi-word phrases are checked before their shorter substrings so e.g.
+// "business development representative" matches as one unit rather than
+// also separately matching "business development".
+const RESUME_ROLE_PHRASES = [
+  'business development representative', 'sales development representative',
+  'account executive', 'account manager', 'business development', 'sales representative',
+  'sales development', 'partner development', 'partnerships', 'relationship manager',
+  'client success', 'customer success', 'sales operations', 'revenue operations',
+  'inside sales', 'outside sales', 'territory sales', 'channel sales', 'field sales',
+  'financial crimes investigator', 'background investigator', 'fraud investigator',
+  'compliance officer', 'compliance analyst', 'compliance specialist', 'aml analyst',
+  'kyc analyst', 'risk analyst', 'risk management', 'due diligence', 'financial crime',
+  'investigator', 'investigations', 'paralegal', 'legal assistant', 'law enforcement',
+  'financial analyst', 'credit analyst', 'underwriter', 'accountant', 'bookkeeper',
+  'accounts payable', 'accounts receivable', 'treasury analyst', 'bank teller', 'banker',
+  'branch manager', 'loan officer', 'mortgage', 'wealth management',
+  'software engineer', 'software developer', 'data analyst', 'data scientist',
+  'product manager', 'project manager', 'program manager', 'engineering manager',
+  'qa engineer', 'devops engineer', 'systems administrator', 'network engineer',
+  'marketing manager', 'content marketing', 'growth marketing', 'digital marketing',
+  'social media manager', 'brand manager', 'marketing coordinator', 'product marketing',
+  'operations manager', 'operations coordinator', 'supply chain', 'logistics coordinator',
+  'human resources', 'talent acquisition', 'recruiter', 'recruiting coordinator',
+  'customer support', 'customer service', 'technical support', 'help desk',
+  'registered nurse', 'clinical coordinator', 'patient care', 'medical assistant',
+  'office manager', 'administrative assistant', 'executive assistant',
+  'teacher', 'instructor', 'consultant', 'analyst', 'coordinator', 'specialist',
+];
+
+function extractResumeKeywords(text) {
+  const lower = text.toLowerCase();
+  const found = [];
+  // Longest phrases first, so a match "claims" its words before a shorter
+  // overlapping phrase gets a redundant separate match.
+  const sorted = [...RESUME_ROLE_PHRASES].sort((a, b) => b.length - a.length);
+  const claimed = new Array(lower.length).fill(false);
+  sorted.forEach(phrase => {
+    let searchFrom = 0;
+    while (true) {
+      const idx = lower.indexOf(phrase, searchFrom);
+      if (idx === -1) break;
+      const alreadyClaimed = claimed.slice(idx, idx + phrase.length).some(Boolean);
+      if (!alreadyClaimed) {
+        found.push(phrase);
+        for (let i = idx; i < idx + phrase.length; i++) claimed[i] = true;
+      }
+      searchFrom = idx + phrase.length;
+    }
+  });
+  return Array.from(new Set(found)).slice(0, 15);
+}
+
+function saveFilter() {
+  const name = document.getElementById('savedName').value.trim();
+  const include = document.getElementById('savedInclude').value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const exclude = document.getElementById('savedExclude').value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  if (!name) { showToast('Give the filter a name.'); return; }
+  savedFilters = savedFilters.filter(f => f.name !== name);
+  savedFilters.push({ name, include, exclude });
+  persistState();
+  document.getElementById('savedModal').classList.remove('open');
+  renderSavedFilterOptions();
+  document.getElementById('savedFilterSelect').value = name;
+  render();
+  showToast('Filter saved.');
+}
+
+function renderSavedFilterOptions() {
+  const sel = document.getElementById('savedFilterSelect');
+  const prev = sel.value;
+  sel.innerHTML = '<option value="none">No saved filter</option>' +
+    savedFilters.map(f => `<option value="${esc(f.name)}">${esc(f.name)}</option>`).join('');
+  if (savedFilters.some(f => f.name === prev)) sel.value = prev;
+  refreshCustomSelectDisplay(sel);
+}
+
+// ---------- data access ----------
+
+function allJobs() {
+  const out = [];
+  companies.forEach(c => {
+    if (c.enabled === false) return;
+    const entry = cache[c.slug];
+    if (!entry) return;
+    entry.jobs.forEach(j => out.push({ ...j, _company: c.slug }));
+  });
+  return out;
+}
+function openJobs() { return allJobs().filter(j => j.status !== 'closed'); }
+// ---------- location parsing ----------
+// Free-text location strings from thousands of independent job boards have no
+// consistent format ("New York, NY" / "NYC" / "US - New York" / "New York City
+// (Hybrid)" all mean the same thing). This classifies each raw string into a
+// country plus zero or more canonical region/city tags, so filtering can group
+// "New York" once instead of showing 20 near-duplicate strings. It's a best-
+// effort heuristic, not a geocoder \u2014 anything it can't confidently classify
+// lands in "Other / Unparsed" rather than being silently dropped.
+
+const COUNTRY_ALIASES = {
+  'us': 'United States', 'usa': 'United States', 'u.s.': 'United States', 'u.s.a.': 'United States',
+  'united states': 'United States', 'united states of america': 'United States',
+  'uk': 'United Kingdom', 'u.k.': 'United Kingdom', 'united kingdom': 'United Kingdom',
+  'england': 'United Kingdom', 'scotland': 'United Kingdom', 'wales': 'United Kingdom', 'britain': 'United Kingdom',
+  'canada': 'Canada',
+  'ireland': 'Ireland', 'eire': 'Ireland',
+  'australia': 'Australia',
+  'germany': 'Germany', 'deutschland': 'Germany',
+  'france': 'France',
+  'india': 'India',
+  'singapore': 'Singapore',
+  'japan': 'Japan',
+  'taiwan': 'Taiwan',
+  'netherlands': 'Netherlands', 'holland': 'Netherlands',
+  'uae': 'United Arab Emirates', 'united arab emirates': 'United Arab Emirates',
+  'ghana': 'Ghana',
+  'argentina': 'Argentina',
+  'mexico': 'Mexico',
+  'brazil': 'Brazil',
+  'spain': 'Spain',
+  'italy': 'Italy',
+  'poland': 'Poland',
+  'israel': 'Israel',
+  'china': 'China',
+  'south korea': 'South Korea', 'korea': 'South Korea',
+  'new zealand': 'New Zealand',
+};
+
+const REGION_PSEUDO_COUNTRY = {
+  'remote': 'Remote / Unspecified',
+  'apac': 'APAC (Region)', 'apj': 'APAC (Region)',
+  'emea': 'EMEA (Region)',
+  'americas': 'Americas (Region)', 'amer': 'Americas (Region)',
+  'worldwide': 'Worldwide', 'global': 'Worldwide', 'ww': 'Worldwide',
+  'distributed': 'Remote / Unspecified',
+};
+
+const US_STATES = {
+  'al': 'Alabama', 'alabama': 'Alabama', 'ak': 'Alaska', 'alaska': 'Alaska',
+  'az': 'Arizona', 'arizona': 'Arizona', 'ar': 'Arkansas', 'arkansas': 'Arkansas',
+  'ca': 'California', 'california': 'California', 'co': 'Colorado', 'colorado': 'Colorado',
+  'ct': 'Connecticut', 'connecticut': 'Connecticut', 'de': 'Delaware', 'delaware': 'Delaware',
+  'fl': 'Florida', 'florida': 'Florida', 'ga': 'Georgia', 'georgia': 'Georgia',
+  'hi': 'Hawaii', 'hawaii': 'Hawaii', 'id': 'Idaho', 'idaho': 'Idaho',
+  'il': 'Illinois', 'illinois': 'Illinois', 'in': 'Indiana', 'indiana': 'Indiana',
+  'ia': 'Iowa', 'iowa': 'Iowa', 'ks': 'Kansas', 'kansas': 'Kansas',
+  'ky': 'Kentucky', 'kentucky': 'Kentucky', 'la': 'Louisiana', 'louisiana': 'Louisiana',
+  'me': 'Maine', 'maine': 'Maine', 'md': 'Maryland', 'maryland': 'Maryland',
+  'ma': 'Massachusetts', 'massachusetts': 'Massachusetts', 'mi': 'Michigan', 'michigan': 'Michigan',
+  'mn': 'Minnesota', 'minnesota': 'Minnesota', 'ms': 'Mississippi', 'mississippi': 'Mississippi',
+  'mo': 'Missouri', 'missouri': 'Missouri', 'mt': 'Montana', 'montana': 'Montana',
+  'ne': 'Nebraska', 'nebraska': 'Nebraska', 'nv': 'Nevada', 'nevada': 'Nevada',
+  'nh': 'New Hampshire', 'new hampshire': 'New Hampshire', 'nj': 'New Jersey', 'new jersey': 'New Jersey',
+  'nm': 'New Mexico', 'new mexico': 'New Mexico', 'ny': 'New York', 'new york': 'New York',
+  'nc': 'North Carolina', 'north carolina': 'North Carolina', 'nd': 'North Dakota', 'north dakota': 'North Dakota',
+  'oh': 'Ohio', 'ohio': 'Ohio', 'ok': 'Oklahoma', 'oklahoma': 'Oklahoma',
+  'or': 'Oregon', 'oregon': 'Oregon', 'pa': 'Pennsylvania', 'pennsylvania': 'Pennsylvania',
+  'ri': 'Rhode Island', 'rhode island': 'Rhode Island', 'sc': 'South Carolina', 'south carolina': 'South Carolina',
+  'sd': 'South Dakota', 'south dakota': 'South Dakota', 'tn': 'Tennessee', 'tennessee': 'Tennessee',
+  'tx': 'Texas', 'texas': 'Texas', 'ut': 'Utah', 'utah': 'Utah',
+  'vt': 'Vermont', 'vermont': 'Vermont', 'va': 'Virginia', 'virginia': 'Virginia',
+  'wa': 'Washington', 'washington': 'Washington', 'wv': 'West Virginia', 'west virginia': 'West Virginia',
+  'wi': 'Wisconsin', 'wisconsin': 'Wisconsin', 'wy': 'Wyoming', 'wyoming': 'Wyoming',
+  'dc': 'Washington DC', 'washington dc': 'Washington DC', 'washington d.c.': 'Washington DC',
+};
+
+// city (lowercase) -> { country, region: canonical display name }
+const CITY_TABLE = {
+  'new york': { country: 'United States', region: 'New York' }, 'new york city': { country: 'United States', region: 'New York' }, 'nyc': { country: 'United States', region: 'New York' },
+  'san francisco': { country: 'United States', region: 'San Francisco' }, 'sf': { country: 'United States', region: 'San Francisco' }, 'bay area': { country: 'United States', region: 'San Francisco' },
+  'los angeles': { country: 'United States', region: 'Los Angeles' }, 'la': { country: 'United States', region: 'Los Angeles' },
+  'san diego': { country: 'United States', region: 'San Diego' },
+  'chicago': { country: 'United States', region: 'Chicago' },
+  'boston': { country: 'United States', region: 'Boston' },
+  'austin': { country: 'United States', region: 'Austin' },
+  'seattle': { country: 'United States', region: 'Seattle' },
+  'denver': { country: 'United States', region: 'Denver' },
+  'atlanta': { country: 'United States', region: 'Atlanta' },
+  'miami': { country: 'United States', region: 'Miami' },
+  'dallas': { country: 'United States', region: 'Dallas' },
+  'houston': { country: 'United States', region: 'Houston' },
+  'portland': { country: 'United States', region: 'Portland' },
+  'phoenix': { country: 'United States', region: 'Phoenix' },
+  'philadelphia': { country: 'United States', region: 'Philadelphia' },
+  'nashville': { country: 'United States', region: 'Nashville' },
+  'salt lake city': { country: 'United States', region: 'Salt Lake City' },
+  'provo': { country: 'United States', region: 'Provo' },
+  'lehi': { country: 'United States', region: 'Lehi' },
+  'indianapolis': { country: 'United States', region: 'Indianapolis' },
+  'carrollton': { country: 'United States', region: 'Carrollton' },
+  'santa fe': { country: 'United States', region: 'Santa Fe' },
+  'redwood city': { country: 'United States', region: 'San Francisco' },
+  'toronto': { country: 'Canada', region: 'Toronto' },
+  'vancouver': { country: 'Canada', region: 'Vancouver' },
+  'montreal': { country: 'Canada', region: 'Montreal' },
+  'london': { country: 'United Kingdom', region: 'London' },
+  'dublin': { country: 'Ireland', region: 'Dublin' },
+  'sydney': { country: 'Australia', region: 'Sydney' },
+  'melbourne': { country: 'Australia', region: 'Melbourne' },
+  'perth': { country: 'Australia', region: 'Perth' },
+  'amsterdam': { country: 'Netherlands', region: 'Amsterdam' },
+  'singapore': { country: 'Singapore', region: 'Singapore' },
+  'bangalore': { country: 'India', region: 'Bangalore' }, 'bengaluru': { country: 'India', region: 'Bangalore' },
+  'mumbai': { country: 'India', region: 'Mumbai' },
+  'tokyo': { country: 'Japan', region: 'Tokyo' },
+  'berlin': { country: 'Germany', region: 'Berlin' },
+  'paris': { country: 'France', region: 'Paris' },
+  'abu dhabi': { country: 'United Arab Emirates', region: 'Abu Dhabi' },
+  'dubai': { country: 'United Arab Emirates', region: 'Dubai' },
+  'accra': { country: 'Ghana', region: 'Accra' },
+  'albuquerque': { country: 'United States', region: 'Albuquerque' },
+  'albany': { country: 'United States', region: 'Albany' },
+  'abilene': { country: 'United States', region: 'Abilene' },
+};
+
+const OTHER_COUNTRY = 'Other / Unparsed';
+
+const locationParseCache = new Map();
+
+function normalizeLocationToken(s) {
+  return s.trim().toLowerCase().replace(/[.,]/g, '').replace(/\s+/g, ' ');
+}
+
+function matchToken(key) {
+  if (COUNTRY_ALIASES[key]) return { country: COUNTRY_ALIASES[key], tag: null };
+  if (US_STATES[key]) return { country: 'United States', tag: US_STATES[key] };
+  if (CITY_TABLE[key]) return { country: CITY_TABLE[key].country, tag: CITY_TABLE[key].region };
+  if (REGION_PSEUDO_COUNTRY[key]) return { country: REGION_PSEUDO_COUNTRY[key], tag: null };
+  return null;
+}
+
+// Matches one segment, with fallbacks for common glued-together patterns that
+// have no comma/dash separating them (e.g. "New York NY", "USA Remote").
+function matchSegment(rawSeg) {
+  const key = normalizeLocationToken(rawSeg);
+  if (!key) return [];
+
+  const direct = matchToken(key);
+  if (direct) return [direct];
+
+  // "USA Remote" / "Remote USA" \u2014 strip a glued "remote" and retry.
+  const withoutRemote = key.replace(/\bremote\b/g, '').trim().replace(/\s+/g, ' ');
+  if (withoutRemote && withoutRemote !== key) {
+    const m = matchToken(withoutRemote);
+    if (m) return [m];
+  }
+
+  // "New York NY" (no comma) \u2014 a trailing 2-letter state code glued onto a city name.
+  const words = key.split(' ');
+  if (words.length > 1) {
+    const lastWord = words[words.length - 1];
+    if (lastWord.length === 2 && US_STATES[lastWord]) {
+      const results = [{ country: 'United States', tag: US_STATES[lastWord] }];
+      const cityMatch = matchToken(words.slice(0, -1).join(' '));
+      if (cityMatch) results.push(cityMatch);
+      return results;
+    }
+  }
+
+  return [];
+}
+
+function parseLocationRaw(raw) {
+  if (locationParseCache.has(raw)) return locationParseCache.get(raw);
+
+  if (!raw || !raw.trim()) {
+    const empty = { country: 'Unspecified', tags: [] };
+    locationParseCache.set(raw, empty);
+    return empty;
+  }
+
+  // Strip qualifier noise (parentheticals, "Hybrid", "Office", etc). Bare "remote"
+  // is deliberately NOT stripped here \u2014 it's a meaningful signal on its own,
+  // handled by REGION_PSEUDO_COUNTRY and the glued-token fallback below.
+  const cleaned = raw
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\b(hybrid|remote-friendly|on-?site|office|hq|headquarters)\b/gi, ' ');
+
+  const segments = cleaned
+    .split(/,|\/|\||\bor\b|\bwithin\b|-{1,2}(?=\s|[A-Za-z])/i)
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  let country = null;
+  const tags = new Set();
+
+  segments.forEach(seg => {
+    matchSegment(seg).forEach(m => {
+      if (!country && m.country) country = m.country;
+      if (m.tag) tags.add(m.tag);
+    });
+  });
+
+  const result = { country: country || OTHER_COUNTRY, tags: Array.from(tags) };
+  locationParseCache.set(raw, result);
+  return result;
+}
+
+// ---------- filters ----------
+
+function jobDept(j) { return j.department || j.team || 'General'; }
+
+function populateFilters(jobs) {
+  const deptList = document.getElementById('deptOptions');
+  const depts = Array.from(new Set(jobs.map(jobDept))).sort();
+  deptList.innerHTML = depts.map(d => `<option value="${esc(d)}">`).join('');
+
+  // Every job gets a parsed { country, tags } via the memoized parser.
+  const parsed = jobs.map(j => parseLocationRaw(j.location || ''));
+
+  const countrySel = document.getElementById('countryFilterSelect');
+  const prevCountry = countrySel.value;
+  const countries = Array.from(new Set(parsed.map(p => p.country))).sort();
+  countrySel.innerHTML = '<option value="all">All countries</option>' +
+    countries.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  countrySel.value = countries.includes(prevCountry) ? prevCountry : 'all';
+  refreshCustomSelectDisplay(countrySel);
+
+  const selectedCountry = countrySel.value;
+  const regionSel = document.getElementById('regionFilterSelect');
+  const prevRegion = regionSel.value;
+  const regionTags = new Set();
+  parsed.forEach(p => {
+    if (selectedCountry === 'all' || p.country === selectedCountry) {
+      p.tags.forEach(t => regionTags.add(t));
+    }
+  });
+  const regions = Array.from(regionTags).sort();
+  regionSel.innerHTML = '<option value="all">All states/cities</option>' +
+    regions.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('');
+  regionSel.value = regions.includes(prevRegion) ? prevRegion : 'all';
+  refreshCustomSelectDisplay(regionSel);
+}
+
+function getFiltered(precomputedJobs) {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const dept = document.getElementById('deptFilter').value.trim().toLowerCase();
+  const countryFilter = document.getElementById('countryFilterSelect').value;
+  const regionFilter = document.getElementById('regionFilterSelect').value;
+  const sort = document.getElementById('sortSelect').value;
+  const newOnly = document.getElementById('newOnlyToggle').checked;
+  const showClosed = document.getElementById('showClosedToggle').checked;
+  const closedThisRefreshOnly = document.getElementById('closedThisRefreshToggle').checked;
+  const savedName = document.getElementById('savedFilterSelect').value;
+  const saved = savedFilters.find(f => f.name === savedName);
+
+  let jobs = (precomputedJobs || allJobs()).filter(j => {
+    if (closedThisRefreshOnly) {
+      if (j.status !== 'closed') return false;
+      if (!j.closedAt || !lastRefreshStartTime || j.closedAt < lastRefreshStartTime) return false;
+    } else if (!showClosed && j.status === 'closed') {
+      return false;
+    }
+    if (companyFilter && j._company !== companyFilter) return false;
+    if (search && !((j.title || '').toLowerCase().includes(search) || j._company.toLowerCase().includes(search))) return false;
+    if (dept && !jobDept(j).toLowerCase().includes(dept)) return false;
+    if (countryFilter !== 'all' || regionFilter !== 'all') {
+      const parsed = parseLocationRaw(j.location || '');
+      if (countryFilter !== 'all' && parsed.country !== countryFilter) return false;
+      if (regionFilter !== 'all' && !parsed.tags.includes(regionFilter)) return false;
+    }
+    if (newOnly && !j.isNew) return false;
+    if (saved) {
+      const title = (j.title || '').toLowerCase();
+      if (saved.include.length && !saved.include.some(k => title.includes(k))) return false;
+      if (saved.exclude.length && saved.exclude.some(k => title.includes(k))) return false;
+    }
+    return true;
+  });
+
+  jobs.sort((a, b) => {
+    if (sort === 'company') return a._company.localeCompare(b._company);
+    const da = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+    const db = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+    return sort === 'oldest' ? da - db : db - da;
+  });
+
+  return jobs;
+}
+
+// ---------- rendering ----------
+
+let sidebarStatusFilter = 'all'; // 'all' | 'enabled' | 'disabled' | 'errors'
+let companyListExpanded = false; // list is hidden by default unless searching/filtering
+let sidebarSourceFilter = 'all';
+
+function companyStatusOf(c) {
+  const entry = cache[c.slug];
+  if (c.enabled === false) return 'disabled';
+  if (entry && entry.error) return 'errors';
+  return 'enabled';
+}
+
+function getSidebarFilteredCompanies() {
+  const searchTerm = document.getElementById('companySearchInput').value.trim().toLowerCase();
+  return companies.filter(c => {
+    if (searchTerm && !c.slug.toLowerCase().includes(searchTerm)) return false;
+    if (sidebarStatusFilter !== 'all' && companyStatusOf(c) !== sidebarStatusFilter) return false;
+    if (sidebarSourceFilter !== 'all' && (c.source || 'unknown') !== sidebarSourceFilter) return false;
+    return true;
+  });
+}
+
+function renderStatusPills() {
+  const counts = { all: companies.length, enabled: 0, disabled: 0, errors: 0 };
+  companies.forEach(c => { counts[companyStatusOf(c)]++; });
+
+  const pills = [
+    { key: 'all', label: 'All' },
+    { key: 'enabled', label: 'Enabled' },
+    { key: 'disabled', label: 'Disabled' },
+    { key: 'errors', label: 'Errors' },
+  ];
+
+  const container = document.getElementById('statusPills');
+  container.innerHTML = '';
+  pills.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'status-pill' + (sidebarStatusFilter === p.key ? ' active' : '');
+    btn.textContent = `${p.label} (${counts[p.key]})`;
+    btn.addEventListener('click', () => { sidebarStatusFilter = p.key; renderSidebar(); });
+    container.appendChild(btn);
+  });
+}
+
+function renderSourceFilter() {
+  const sel = document.getElementById('sourceFilterSelect');
+  const prev = sel.value;
+  const sources = Array.from(new Set(companies.map(c => c.source || 'unknown'))).sort();
+  sel.innerHTML = '<option value="all">All sources</option>' +
+    sources.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  if (sources.includes(prev)) sel.value = prev;
+  else sidebarSourceFilter = 'all';
+  refreshCustomSelectDisplay(sel);
+}
+
+function renderBulkActionBar(filtered) {
+  const bar = document.getElementById('bulkActionBar');
+  const scopeActive = sidebarStatusFilter !== 'all' || sidebarSourceFilter !== 'all' ||
+    document.getElementById('companySearchInput').value.trim() !== '';
+
+  if (!scopeActive || filtered.length === 0) {
+    bar.classList.remove('visible');
+    bar.innerHTML = '';
+    return;
+  }
+
+  bar.classList.add('visible');
+  bar.innerHTML = `
+    <div class="bulk-action-label">${filtered.length} compan${filtered.length === 1 ? 'y' : 'ies'} match this filter</div>
+    <div class="bulk-action-buttons">
+      <button id="bulkEnableBtn">Enable all</button>
+      <button id="bulkDisableBtn">Disable all</button>
+      <button id="bulkRemoveBtn" class="danger">Remove all</button>
+    </div>
+  `;
+  document.getElementById('bulkEnableBtn').addEventListener('click', () => bulkSetEnabled(filtered, true));
+  document.getElementById('bulkDisableBtn').addEventListener('click', () => bulkSetEnabled(filtered, false));
+  document.getElementById('bulkRemoveBtn').addEventListener('click', () => bulkRemove(filtered));
+}
+
+function bulkSetEnabled(filtered, enabled) {
+  const slugs = new Set(filtered.map(c => c.slug));
+  companies.forEach(c => { if (slugs.has(c.slug)) c.enabled = enabled; });
+  persistState();
+  render();
+  showToast(`${enabled ? 'Enabled' : 'Disabled'} ${filtered.length} compan${filtered.length === 1 ? 'y' : 'ies'}.`);
+}
+
+function bulkRemove(filtered) {
+  if (!confirm(`Remove ${filtered.length} compan${filtered.length === 1 ? 'y' : 'ies'} matching this filter? This also clears their cached jobs and can't be undone.`)) return;
+  const slugs = new Set(filtered.map(c => c.slug));
+  companies = companies.filter(c => !slugs.has(c.slug));
+  slugs.forEach(slug => delete cache[slug]);
+  if (companyFilter && slugs.has(companyFilter)) companyFilter = null;
+  persistState();
+  render();
+  showToast(`Removed ${filtered.length} compan${filtered.length === 1 ? 'y' : 'ies'}.`);
+}
+
+function renderSidebar() {
+  document.getElementById('companyCount').textContent = companies.length;
+  renderStatusPills();
+  renderSourceFilter();
+  sidebarSourceFilter = document.getElementById('sourceFilterSelect').value;
+
+  const list = document.getElementById('companyList');
+  list.innerHTML = '';
+  const visibleCompanies = getSidebarFilteredCompanies();
+  renderBulkActionBar(visibleCompanies);
+
+  const searchActive = document.getElementById('companySearchInput').value.trim() !== '';
+  const filterActive = sidebarStatusFilter !== 'all' || sidebarSourceFilter !== 'all' || searchActive;
+  const shouldShowList = companyListExpanded || filterActive;
+
+  const toggleBtn = document.getElementById('toggleCompanyListBtn');
+  if (filterActive) {
+    toggleBtn.style.display = 'none';
+  } else {
+    toggleBtn.style.display = '';
+    toggleBtn.textContent = companyListExpanded ? 'Hide list' : `Show list (${companies.length})`;
+  }
+
+  if (!shouldShowList) {
+    list.innerHTML = '';
+    return;
+  }
+
+  if (visibleCompanies.length === 0) {
+    list.innerHTML = '<div class="empty-hint">No tracked companies match.</div>';
+    return;
+  }
+
+  visibleCompanies.forEach(c => {
+    const entry = cache[c.slug];
+    const row = document.createElement('div');
+    row.className = 'company-row' + (companyFilter === c.slug ? ' filtered' : '');
+    row.style.borderLeftColor = avatarColor(c.slug) + '80';
+
+    const enableBox = document.createElement('input');
+    enableBox.type = 'checkbox';
+    enableBox.checked = c.enabled !== false;
+    enableBox.title = 'Include in refresh';
+    enableBox.setAttribute('aria-label', `Include ${c.slug} in refresh`);
+    enableBox.style.cssText = 'flex-shrink:0; cursor:pointer;';
+    enableBox.addEventListener('change', () => toggleCompanyEnabled(c.slug));
+    row.appendChild(enableBox);
+
+    if (c.enabled === false) row.style.opacity = '0.5';
+
+    const dot = document.createElement('div');
+    let dotClass = 'dot-pending';
+    if (entry) {
+      if (entry.error && entry.stale) dotClass = 'dot-stale';
+      else if (entry.error) dotClass = 'dot-error';
+      else dotClass = 'dot-ok';
+    }
+    dot.className = 'company-status-dot ' + dotClass;
+    row.appendChild(dot);
+
+    const name = document.createElement('button');
+    name.type = 'button';
+    name.className = 'company-row-name';
+    name.textContent = c.slug;
+    const provenance = c.source ? `Added via ${c.source}${c.addedAt ? ' on ' + new Date(c.addedAt).toLocaleDateString() : ''}` : c.slug;
+    name.title = entry && entry.error ? (entry.stale ? entry.error + ' \u2014 showing last-known jobs' : entry.error) : provenance;
+    name.setAttribute('aria-label', `Filter job list to ${c.slug}`);
+    name.addEventListener('click', () => { companyFilter = companyFilter === c.slug ? null : c.slug; render(); });
+    row.appendChild(name);
+
+    const count = document.createElement('div');
+    count.className = 'company-row-count';
+    count.textContent = entry ? entry.jobs.filter(j => j.status !== 'closed').length : '\u2013';
+    row.appendChild(count);
+
+    if (entry && entry.error) {
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'company-row-retry';
+      retry.textContent = '\u21bb';
+      retry.title = 'Retry this company';
+      retry.setAttribute('aria-label', `Retry fetching ${c.slug}`);
+      retry.addEventListener('click', (e) => { e.stopPropagation(); refreshAll([c.slug]); });
+      row.appendChild(retry);
+    }
+
+    const rm = document.createElement('button');
+    rm.type = 'button';
+    rm.className = 'company-row-remove';
+    rm.textContent = '\u2715';
+    rm.setAttribute('aria-label', `Remove ${c.slug} from tracked companies`);
+    rm.addEventListener('click', () => removeCompany(c.slug));
+    row.appendChild(rm);
+
+    list.appendChild(row);
+  });
+}
+
+let errorDetailExpanded = false;
+
+function renderErrorBanner() {
+  const banner = document.getElementById('errorBanner');
+  const errored = companies.filter(c => cache[c.slug] && cache[c.slug].error);
+  if (errored.length === 0) { banner.innerHTML = ''; return; }
+
+  const parts = errored.map(c => {
+    const e = cache[c.slug];
+    return esc(c.slug) + ' (' + esc(e.error) + (e.stale ? ', showing cached jobs' : '') + ')';
+  });
+
+  banner.innerHTML = `
+    <div class="error-banner">
+      <div class="error-banner-summary">
+        <span>${errored.length} compan${errored.length === 1 ? 'y' : 'ies'} failed on last fetch.</span>
+        <button class="error-banner-toggle" id="errorDetailToggle">${errorDetailExpanded ? 'Hide details' : 'Show details'}</button>
+      </div>
+      ${errorDetailExpanded ? `<div class="error-banner-detail">${parts.join(', ')}</div>` : ''}
+    </div>
+  `;
+
+  document.getElementById('errorDetailToggle').addEventListener('click', () => {
+    errorDetailExpanded = !errorDetailExpanded;
+    renderErrorBanner();
+  });
+}
+
+function renderStats(filtered, allJobsList) {
+  const open = allJobsList.filter(j => j.status !== 'closed');
+  document.getElementById('statCompanies').textContent = companies.length;
+  document.getElementById('statJobs').textContent = open.length;
+  document.getElementById('statNew').textContent = open.filter(j => j.isNew).length;
+  document.getElementById('statMatching').textContent = filtered.length;
+  const errorCount = companies.filter(c => cache[c.slug] && cache[c.slug].error).length;
+  document.getElementById('statErrors').textContent = errorCount;
+  document.getElementById('statErrorsCard').classList.toggle('zero-state', errorCount === 0);
+
+  const deltaEl = document.getElementById('statJobsDelta');
+  if (refreshHistory.length >= 2) {
+    const prev = refreshHistory[refreshHistory.length - 2].openCount;
+    const diff = open.length - prev;
+    deltaEl.className = 'stat-delta ' + (diff > 0 ? 'up' : diff < 0 ? 'down' : '');
+    deltaEl.textContent = diff === 0 ? 'No change vs last refresh' : `${diff > 0 ? '+' : ''}${diff.toLocaleString()} vs last refresh`;
+  } else {
+    deltaEl.className = 'stat-delta';
+    deltaEl.textContent = '';
+  }
+
+  const fetchedTimes = companies.map(c => cache[c.slug] && cache[c.slug].fetchedAt).filter(Boolean);
+  const sub = document.getElementById('lastFetchedSub');
+  if (fetchedTimes.length === 0) {
+    sub.textContent = companies.length ? 'Not fetched yet \u2014 click Refresh all.' : 'Add a company slug to get started.';
+  } else {
+    const latest = new Date(Math.max(...fetchedTimes));
+    sub.textContent = 'Last fetched ' + latest.toLocaleString();
+  }
+}
+
+function renderHistoryModal() {
+  const body = document.getElementById('historyModalBody');
+  if (refreshHistory.length === 0) {
+    body.innerHTML = '<p style="font-size:13px; color:var(--text-secondary);">No full refreshes logged yet. Run "Refresh all" to start tracking history.</p>';
+    return;
+  }
+  const rows = refreshHistory.slice().reverse().map((entry, i) => {
+    const idx = refreshHistory.length - 1 - i;
+    const prev = idx > 0 ? refreshHistory[idx - 1] : null;
+    const diff = prev ? entry.openCount - prev.openCount : null;
+    const diffText = diff === null ? '\u2014' : `${diff > 0 ? '+' : ''}${diff.toLocaleString()}`;
+    const diffColor = diff === null ? 'var(--text-muted)' : diff > 0 ? 'var(--success)' : diff < 0 ? 'var(--danger)' : 'var(--text-muted)';
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 4px; border-bottom:1px solid var(--border); font-size:13px;">
+        <div>
+          <div style="font-weight:600;">${esc(new Date(entry.timestamp).toLocaleString())}</div>
+          <div style="color:var(--text-muted); font-size:11px; margin-top:2px;">+${entry.newCount.toLocaleString()} new \u00b7 ${entry.closedThisRun.toLocaleString()} closed</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-weight:700;">${entry.openCount.toLocaleString()} open</div>
+          <div style="color:${diffColor}; font-size:11px; margin-top:2px;">${diffText} vs previous</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  body.innerHTML = rows;
+}
+
+function renderJobs(jobs) {
+  const list = document.getElementById('jobList');
+  list.innerHTML = '';
+  list.classList.toggle('list-mode', jobsDisplayMode === 'list');
+  if (jobs.length === 0) {
+    list.innerHTML = '<div class="empty-state">No jobs match right now. Add companies or adjust filters.</div>';
+    return;
+  }
+
+  const visible = jobs.slice(0, jobListRenderLimit);
+  const frag = document.createDocumentFragment();
+  visible.forEach(j => {
+    const row = document.createElement('div');
+    row.className = 'job-row' + (j.status === 'closed' ? ' closed' : '');
+
+    const header = document.createElement('div');
+    header.className = 'job-card-header';
+
+    const av = document.createElement('div');
+    av.className = 'job-avatar';
+    av.style.background = avatarColor(j._company) + '30';
+    av.style.color = avatarColor(j._company);
+    av.textContent = initials(j._company);
+    header.appendChild(av);
+
+    const companyName = document.createElement('div');
+    companyName.className = 'job-company-name';
+    companyName.textContent = j._company;
+    header.appendChild(companyName);
+    row.appendChild(header);
+
+    const main = document.createElement('div');
+    main.className = 'job-main';
+    const title = document.createElement('div');
+    title.className = 'job-title';
+    title.innerHTML = `${esc(j.title || 'Untitled role')}
+      ${j.isNew && j.status !== 'closed' ? '<span class="new-badge">New</span>' : ''}
+      ${j.status === 'closed' ? '<span class="closed-badge">Closed</span>' : ''}`;
+    main.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.className = 'job-meta';
+    meta.innerHTML = `
+      <span>${esc(jobDept(j))}</span>
+      <span>\u00b7 ${esc(j.location || 'Not specified')}</span>
+      ${j.publishedAt ? `<span>\u00b7 ${esc(new Date(j.publishedAt).toLocaleDateString())}</span>` : ''}
+    `;
+    main.appendChild(meta);
+    row.appendChild(main);
+
+    if (j.compensation) {
+      const compEl = document.createElement('div');
+      compEl.className = 'job-comp' + (j.compensationUnconfirmed ? ' unconfirmed' : '');
+      compEl.textContent = j.compensationUnconfirmed ? `~${j.compensation} (from description)` : j.compensation;
+      if (j.compensationUnconfirmed) compEl.title = 'Not from Ashby\u2019s structured compensation field \u2014 extracted from the job description text and unverified.';
+      row.appendChild(compEl);
+    }
+
+    const footer = document.createElement('div');
+    footer.className = 'job-card-footer';
+    if (j.status !== 'closed' && j.jobUrl) {
+      const link = document.createElement('a');
+      link.className = 'job-link';
+      link.href = j.jobUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = 'View posting';
+      footer.appendChild(link);
+    }
+    row.appendChild(footer);
+
+    frag.appendChild(row);
+  });
+  list.appendChild(frag);
+
+  if (jobs.length > jobListRenderLimit) {
+    const remaining = jobs.length - jobListRenderLimit;
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'grid-column: 1 / -1; display:flex; flex-direction:column; align-items:center; gap:6px; padding: 14px 0 6px;';
+    const label = document.createElement('div');
+    label.style.cssText = 'font-size:12px; color:var(--text-muted);';
+    label.textContent = `Showing ${jobListRenderLimit} of ${jobs.length} matching jobs`;
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.textContent = `Show ${Math.min(JOB_BATCH_SIZE, remaining)} more`;
+    btn.addEventListener('click', () => {
+      jobListRenderLimit += JOB_BATCH_SIZE;
+      renderJobs(jobs); // reuses the already-filtered array \u2014 no recomputation needed
+    });
+    wrap.appendChild(label);
+    wrap.appendChild(btn);
+    list.appendChild(wrap);
+  }
+}
+
+function safeCSVCell(value) {
+  let text = String(value ?? '');
+  if (/^[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function exportCSV() {
+  const jobs = getFiltered();
+  if (jobs.length === 0) { showToast('Nothing to export.'); return; }
+  const headers = ['Company', 'Title', 'Department', 'Location', 'Status', 'Posted', 'Compensation', 'Compensation Confirmed', 'URL'];
+  const rows = jobs.map(j => [
+    j._company, j.title || '', jobDept(j), j.location || '',
+    j.status || 'open',
+    j.publishedAt ? new Date(j.publishedAt).toLocaleDateString() : '',
+    j.compensation || '', j.compensation ? (j.compensationUnconfirmed ? 'No \u2014 extracted from description' : 'Yes') : '',
+    j.jobUrl || ''
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(safeCSVCell).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ashby-jobs-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('CSV downloaded.');
+}
+
+let jobListRenderLimit = JOB_BATCH_SIZE;
+let lastFilterSignature = null;
+
+function computeFilterSignature() {
+  return [
+    document.getElementById('searchInput').value,
+    document.getElementById('deptFilter').value,
+    document.getElementById('countryFilterSelect').value,
+    document.getElementById('regionFilterSelect').value,
+    document.getElementById('savedFilterSelect').value,
+    document.getElementById('sortSelect').value,
+    document.getElementById('newOnlyToggle').checked,
+    document.getElementById('showClosedToggle').checked,
+    document.getElementById('closedThisRefreshToggle').checked,
+    companyFilter,
+  ].join('|');
+}
+
+let currentView = 'jobs'; // 'jobs' | 'companies'
+let jobsDisplayMode = 'grid'; // 'grid' | 'list'
+let companiesViewFilter = 'all'; // 'all' | 'hasOpenings' | 'noOpenings' | 'newThisWeek' | 'errors'
+let companiesViewRenderLimit = JOB_BATCH_SIZE;
+let lastCompaniesViewSignature = null;
+
+function switchView(view) {
+  currentView = view;
+  document.getElementById('jobsViewBtn').classList.toggle('active', view === 'jobs');
+  document.getElementById('companiesViewBtn').classList.toggle('active', view === 'companies');
+  document.getElementById('jobsViewContainer').style.display = view === 'jobs' ? 'block' : 'none';
+  document.getElementById('companiesViewContainer').style.display = view === 'companies' ? 'block' : 'none';
+  document.getElementById('pageTitle').textContent = view === 'jobs' ? 'Open Roles' : 'Companies';
+  render();
+}
+
+function companyOpenJobCount(slug) {
+  const entry = cache[slug];
+  return entry ? entry.jobs.filter(j => j.status !== 'closed').length : 0;
+}
+
+function renderCompaniesView() {
+  const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const counts = { all: companies.length, hasOpenings: 0, noOpenings: 0, newThisWeek: 0, errors: 0 };
+  companies.forEach(c => {
+    const jobCount = companyOpenJobCount(c.slug);
+    const hasError = cache[c.slug] && cache[c.slug].error;
+    if (jobCount > 0) counts.hasOpenings++; else counts.noOpenings++;
+    if (c.addedAt && c.addedAt >= oneWeekAgo) counts.newThisWeek++;
+    if (hasError) counts.errors++;
+  });
+
+  const pillDefs = [
+    { key: 'all', label: 'All' },
+    { key: 'hasOpenings', label: 'Has openings' },
+    { key: 'noOpenings', label: 'No openings' },
+    { key: 'newThisWeek', label: 'New this week' },
+    { key: 'errors', label: 'Errors' },
+  ];
+  const pillsEl = document.getElementById('companiesViewPills');
+  pillsEl.innerHTML = '';
+  pillDefs.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'status-pill' + (companiesViewFilter === p.key ? ' active' : '');
+    btn.textContent = `${p.label} (${counts[p.key]})`;
+    btn.addEventListener('click', () => { companiesViewFilter = p.key; renderCompaniesView(); });
+    pillsEl.appendChild(btn);
+  });
+
+  const searchTerm = document.getElementById('companiesViewSearch').value.trim().toLowerCase();
+  const sortMode = document.getElementById('companiesViewSort').value;
+
+  let list = companies.filter(c => {
+    if (searchTerm && !c.slug.toLowerCase().includes(searchTerm)) return false;
+    const jobCount = companyOpenJobCount(c.slug);
+    const hasError = cache[c.slug] && cache[c.slug].error;
+    if (companiesViewFilter === 'hasOpenings' && jobCount === 0) return false;
+    if (companiesViewFilter === 'noOpenings' && jobCount > 0) return false;
+    if (companiesViewFilter === 'newThisWeek' && !(c.addedAt && c.addedAt >= oneWeekAgo)) return false;
+    if (companiesViewFilter === 'errors' && !hasError) return false;
+    return true;
+  });
+
+  list.sort((a, b) => {
+    if (sortMode === 'jobs') return companyOpenJobCount(b.slug) - companyOpenJobCount(a.slug);
+    if (sortMode === 'alpha') return a.slug.localeCompare(b.slug);
+    if (sortMode === 'added') return (b.addedAt || 0) - (a.addedAt || 0);
+    // 'recent' (default): by last successful fetch time
+    const aTime = (cache[a.slug] && cache[a.slug].fetchedAt) || 0;
+    const bTime = (cache[b.slug] && cache[b.slug].fetchedAt) || 0;
+    return bTime - aTime;
+  });
+
+  const grid = document.getElementById('companyCardGrid');
+  grid.innerHTML = '';
+  if (list.length === 0) {
+    grid.innerHTML = '<div class="empty-state">No companies match right now.</div>';
+    return;
+  }
+
+  const sig = [searchTerm, sortMode, companiesViewFilter].join('|');
+  if (sig !== lastCompaniesViewSignature) {
+    companiesViewRenderLimit = JOB_BATCH_SIZE;
+    lastCompaniesViewSignature = sig;
+  }
+  const visibleList = list.slice(0, companiesViewRenderLimit);
+
+  const frag = document.createDocumentFragment();
+  visibleList.forEach(c => {
+    const jobCount = companyOpenJobCount(c.slug);
+    const entry = cache[c.slug];
+    const card = document.createElement('div');
+    card.className = 'company-card';
+
+    const header = document.createElement('div');
+    header.className = 'company-card-header';
+    const avatar = document.createElement('div');
+    avatar.className = 'company-card-avatar';
+    avatar.style.background = avatarColor(c.slug) + '30';
+    avatar.style.color = avatarColor(c.slug);
+    avatar.textContent = initials(c.slug);
+    header.appendChild(avatar);
+    const name = document.createElement('div');
+    name.className = 'company-card-name';
+    name.textContent = c.slug;
+    header.appendChild(name);
+    card.appendChild(header);
+
+    const meta = document.createElement('div');
+    meta.className = 'company-card-meta';
+    let statusText = 'Not fetched yet';
+    if (entry) {
+      if (entry.error) statusText = entry.stale ? 'Error \u2014 showing cached jobs' : 'Fetch error';
+      else statusText = 'Updated ' + new Date(entry.fetchedAt).toLocaleDateString();
+    }
+    meta.textContent = statusText;
+    card.appendChild(meta);
+
+    const jobsLine = document.createElement('div');
+    jobsLine.className = 'company-card-jobs ' + (jobCount > 0 ? 'some' : 'zero');
+    jobsLine.textContent = jobCount > 0 ? `${jobCount.toLocaleString()} open job${jobCount === 1 ? '' : 's'}` : 'No open jobs';
+    card.appendChild(jobsLine);
+
+    const viewBtn = document.createElement('button');
+    viewBtn.className = 'job-link';
+    viewBtn.style.cssText = 'border:none; width:100%; cursor:pointer;';
+    viewBtn.textContent = 'View jobs';
+    viewBtn.addEventListener('click', () => {
+      companyFilter = c.slug;
+      switchView('jobs');
+    });
+    card.appendChild(viewBtn);
+
+    frag.appendChild(card);
+  });
+  grid.appendChild(frag);
+
+  if (list.length > companiesViewRenderLimit) {
+    const remaining = list.length - companiesViewRenderLimit;
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'grid-column: 1 / -1; display:flex; flex-direction:column; align-items:center; gap:6px; padding: 14px 0 6px;';
+    const label = document.createElement('div');
+    label.style.cssText = 'font-size:12px; color:var(--text-muted);';
+    label.textContent = `Showing ${companiesViewRenderLimit} of ${list.length} companies`;
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.textContent = `Show ${Math.min(JOB_BATCH_SIZE, remaining)} more`;
+    btn.addEventListener('click', () => {
+      companiesViewRenderLimit += JOB_BATCH_SIZE;
+      renderCompaniesView();
+    });
+    wrap.appendChild(label);
+    wrap.appendChild(btn);
+    grid.appendChild(wrap);
+  }
+}
+
+function render() {
+  renderSidebar();
+  renderErrorBanner();
+  renderSavedFilterOptions();
+  const jobs = allJobs(); // computed once, reused everywhere below instead of each
+                           // function re-walking every company's cached jobs itself
+  populateFilters(jobs.filter(j => j.status !== 'closed'));
+  const filtered = getFiltered(jobs);
+  renderStats(filtered, jobs);
+
+  if (!isRefreshing) {
+    const rel = formatRelativeTime(lastRefreshAt);
+    setSidebarRefreshStatus(rel ? `Last refreshed ${rel}` : 'Not fetched yet', false);
+  }
+
+  const sig = computeFilterSignature();
+  if (sig !== lastFilterSignature) {
+    jobListRenderLimit = JOB_BATCH_SIZE;
+    lastFilterSignature = sig;
+  }
+
+  if (currentView === 'jobs') {
+    renderJobs(filtered);
+  } else {
+    renderCompaniesView();
+  }
+}
+
+// ---------- wiring ----------
+
+document.getElementById('addCompanyBtn').addEventListener('click', addCompany);
+document.getElementById('moreAddOptionsToggle').addEventListener('click', () => {
+  const panel = document.getElementById('moreAddOptions');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  document.getElementById('moreAddOptionsToggle').textContent = isOpen ? 'More ways to add' : 'Fewer options';
+});
+document.getElementById('manageDataToggle').addEventListener('click', () => {
+  const panel = document.getElementById('manageDataPanel');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  document.getElementById('manageDataToggle').textContent = isOpen ? 'Manage data' : 'Hide data options';
+});
+document.getElementById('companyInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') addCompany(); });
+document.getElementById('seedBtn').addEventListener('click', () => addSlugBatch(STARTER_LIST, 'starter-list'));
+document.getElementById('communityListBtn').addEventListener('click', () => addSlugBatch(COMMUNITY_LIST, 'community-list'));
+
+// ---------- modal accessibility: shared open/close + Escape + focus return ----------
+let modalTriggerElement = null;
+
+function openModal(modalId, triggerEl) {
+  modalTriggerElement = triggerEl || document.activeElement;
+  const modal = document.getElementById(modalId);
+  modal.classList.add('open');
+  const firstField = modal.querySelector('input, textarea, select, button');
+  if (firstField) firstField.focus();
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).classList.remove('open');
+  if (modalTriggerElement && typeof modalTriggerElement.focus === 'function') {
+    modalTriggerElement.focus();
+  }
+  modalTriggerElement = null;
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const openOverlay = document.querySelector('.modal-overlay.open');
+  if (openOverlay) closeModal(openOverlay.id);
+});
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeModal(overlay.id);
+  });
+});
+
+document.getElementById('bulkAddBtn').addEventListener('click', (e) => {
+  document.getElementById('bulkTextarea').value = '';
+  openModal('bulkModal', e.currentTarget);
+});
+document.getElementById('bulkCancelBtn').addEventListener('click', () => closeModal('bulkModal'));
+document.getElementById('bulkSubmitBtn').addEventListener('click', () => {
+  const raw = document.getElementById('bulkTextarea').value;
+  closeModal('bulkModal');
+  addSlugBatch(extractCandidates(raw), 'bulk-paste');
+});
+
+document.getElementById('jobsViewBtn').addEventListener('click', () => switchView('jobs'));
+document.getElementById('jobsGridModeBtn').addEventListener('click', () => {
+  jobsDisplayMode = 'grid';
+  document.getElementById('jobsGridModeBtn').classList.add('active');
+  document.getElementById('jobsListModeBtn').classList.remove('active');
+  render();
+});
+document.getElementById('jobsListModeBtn').addEventListener('click', () => {
+  jobsDisplayMode = 'list';
+  document.getElementById('jobsListModeBtn').classList.add('active');
+  document.getElementById('jobsGridModeBtn').classList.remove('active');
+  render();
+});
+document.getElementById('companiesViewBtn').addEventListener('click', () => switchView('companies'));
+document.getElementById('companiesViewSearch').addEventListener('input', debounce(renderCompaniesView));
+document.getElementById('companiesViewSort').addEventListener('change', renderCompaniesView);
+
+document.getElementById('historyBtn').addEventListener('click', (e) => {
+  renderHistoryModal();
+  openModal('historyModal', e.currentTarget);
+});
+document.getElementById('historyCloseBtn').addEventListener('click', () => closeModal('historyModal'));
+
+document.getElementById('savedSearchBtn').addEventListener('click', (e) => {
+  document.getElementById('savedName').value = '';
+  document.getElementById('savedInclude').value = '';
+  document.getElementById('savedExclude').value = '';
+  document.getElementById('resumeText').value = '';
+  document.getElementById('resumeSection').style.display = 'none';
+  document.getElementById('resumeSectionToggle').textContent = 'Suggest keywords from a resume';
+  openModal('savedModal', e.currentTarget);
+});
+document.getElementById('savedCancelBtn').addEventListener('click', () => closeModal('savedModal'));
+document.getElementById('savedSubmitBtn').addEventListener('click', saveFilter);
+
+document.getElementById('resumeSectionToggle').addEventListener('click', () => {
+  const panel = document.getElementById('resumeSection');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  document.getElementById('resumeSectionToggle').textContent = isOpen ? 'Suggest keywords from a resume' : 'Hide';
+});
+
+document.getElementById('resumeExtractBtn').addEventListener('click', () => {
+  const text = document.getElementById('resumeText').value;
+  if (!text.trim()) { showToast('Paste resume text first.'); return; }
+  const keywords = extractResumeKeywords(text);
+  if (keywords.length === 0) {
+    showToast('No recognizable role/function phrases found \u2014 try adding keywords manually instead.');
+    return;
+  }
+  const includeField = document.getElementById('savedInclude');
+  const existing = includeField.value.split(',').map(s => s.trim()).filter(Boolean);
+  const merged = Array.from(new Set([...existing, ...keywords]));
+  includeField.value = merged.join(', ');
+  showToast(`Added ${keywords.length} suggested keyword${keywords.length === 1 ? '' : 's'} \u2014 review before saving.`);
+});
+
+document.getElementById('importCompaniesBtn').addEventListener('click', () => document.getElementById('importCompaniesFile').click());
+document.getElementById('importCompaniesFile').addEventListener('change', (e) => {
+  if (e.target.files[0]) importCompanies(e.target.files[0]);
+  e.target.value = '';
+});
+document.getElementById('exportCompaniesBtn').addEventListener('click', exportCompanies);
+
+document.getElementById('retryFailedBtn').addEventListener('click', retryFailed);
+document.getElementById('clearFailedBtn').addEventListener('click', clearFailedCompanies);
+document.getElementById('refreshBtn').addEventListener('click', () => refreshAll());
+document.getElementById('exportBtn').addEventListener('click', exportCSV);
+
+document.getElementById('searchInput').addEventListener('input', debounce(render));
+document.getElementById('companySearchInput').addEventListener('input', debounce(renderSidebar));
+document.getElementById('toggleCompanyListBtn').addEventListener('click', () => { companyListExpanded = !companyListExpanded; renderSidebar(); });
+document.getElementById('sourceFilterSelect').addEventListener('change', (e) => { sidebarSourceFilter = e.target.value; renderSidebar(); });
+document.getElementById('deptFilter').addEventListener('input', debounce(render));
+document.getElementById('countryFilterSelect').addEventListener('change', () => {
+  document.getElementById('regionFilterSelect').value = 'all';
+  render();
+});
+document.getElementById('regionFilterSelect').addEventListener('change', render);
+document.getElementById('savedFilterSelect').addEventListener('change', render);
+document.getElementById('sortSelect').addEventListener('change', render);
+document.getElementById('newOnlyToggle').addEventListener('change', render);
+document.getElementById('showClosedToggle').addEventListener('change', render);
+document.getElementById('closedThisRefreshToggle').addEventListener('change', render);
+
+enhanceSelect('sourceFilterSelect', 'sidebar-sizing');
+enhanceSelect('savedFilterSelect', 'toolbar-sizing');
+enhanceSelect('sortSelect', 'toolbar-sizing');
+enhanceSelect('companiesViewSort', 'toolbar-sizing');
+enhanceSelect('countryFilterSelect', 'toolbar-sizing');
+enhanceSelect('regionFilterSelect', 'toolbar-sizing');
+
+loadState().then(render);
+</script>
+
+</body>
+</html>
