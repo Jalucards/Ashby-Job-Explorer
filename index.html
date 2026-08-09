@@ -433,6 +433,12 @@
     font-size: 13px; font-weight: 700; flex-shrink: 0;
   }
   .company-card-name { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .platform-badge {
+    flex-shrink: 0; font-size: 9px; font-weight: 800; letter-spacing: 0.03em;
+    padding: 3px 6px; border-radius: 6px; line-height: 1;
+  }
+  .platform-badge-ashby { background: rgba(96,165,250,0.20); color: var(--info); }
+  .platform-badge-greenhouse { background: var(--success-bg); color: var(--success); }
   .company-card-meta { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
   .company-card-jobs { font-size: 13px; font-weight: 600; margin-top: auto; }
   .company-card-jobs.zero { color: var(--text-muted); font-weight: 500; }
@@ -666,7 +672,7 @@
             <button id="addCompanyBtn">+</button>
           </div>
           <p class="slug-hint">
-            Find the slug in the company's Ashby URL:<br>
+            Paste a full jobs.ashbyhq.com or boards.greenhouse.io URL (platform is detected automatically), or just type an Ashby slug:<br>
             <code>jobs.ashbyhq.com/<b>slug</b></code>
           </p>
           <button id="moreAddOptionsToggle" class="btn btn-block mb-2">More ways to add</button>
@@ -742,7 +748,7 @@
 <div class="modal-overlay" id="bulkModal">
   <div class="modal">
     <h3>Bulk add companies</h3>
-    <p class="hint">One slug per line, or comma-separated. Full jobs.ashbyhq.com URLs work too.</p>
+    <p class="hint">One slug per line, or comma-separated. Full jobs.ashbyhq.com or boards.greenhouse.io URLs work too (platform is detected automatically); bare text defaults to Ashby.</p>
     <textarea id="bulkTextarea" style="min-height:140px;" aria-label="Company slugs, one per line or comma-separated" placeholder="ramp
 notion
 linear"></textarea>
@@ -1135,13 +1141,60 @@ function normalizeJob(job) {
     compensationUnconfirmed,
   };
 }
+// Greenhouse's public Job Board API returns a different shape than Ashby's
+// (location as a {name} object, departments as an array of {name} objects,
+// no structured compensation field in the default response). This produces
+// the exact same normalized shape as normalizeJob() above, so every other
+// function in this file \u2014 filtering, search, location parsing, rendering,
+// CSV export \u2014 works identically for Greenhouse jobs without any changes.
+//
+// Compensation: Greenhouse's list endpoint doesn't include a structured pay
+// field, but requesting ?content=true (see fetchCompany) returns each job's
+// full HTML description in the SAME single request \u2014 no extra request per
+// job, just a larger response. That description is stripped to plain text
+// and run through the exact same extractCompensationFromText() used for
+// Ashby, so a company that mentions pay in its description gets picked up
+// here too, with the same "unconfirmed, extracted from description" honesty.
+function stripHtml(html) {
+  if (!html) return '';
+  return String(html)
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#39;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function normalizeGreenhouseJob(job) {
+  const locationName = (job.location && job.location.name) || '';
+  const departmentNames = Array.isArray(job.departments)
+    ? job.departments.filter(d => d && typeof d.name === 'string').map(d => d.name).join(', ')
+    : '';
+  const extracted = extractCompensationFromText(stripHtml(job.content || ''));
+  return {
+    title: job.title || '',
+    location: locationName,
+    department: departmentNames,
+    team: '',
+    employmentType: '',
+    isRemote: /remote/i.test(locationName),
+    publishedAt: job.updated_at || null,
+    jobUrl: job.absolute_url || '',
+    compensation: extracted || '',
+    compensationUnconfirmed: Boolean(extracted),
+  };
+}
 function jobKey(job, slug) {
   return job.jobUrl || `${slug}|${job.title}|${job.location}|${job.department}`;
 }
 
 // ---------- fetching ----------
 
-async function fetchCompany(slug) {
+async function fetchCompany(slug, platform) {
+  platform = platform || 'ashby'; // existing companies from before multi-platform support have no field; default preserves old behavior exactly
   const previous = cache[slug];
   const attemptedAt = Date.now();
   const controller = new AbortController();
@@ -1151,11 +1204,31 @@ async function fetchCompany(slug) {
   let errorMsg = null;
 
   try {
-    const url = `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(slug)}?includeCompensation=true`;
-    const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP ${res.status} \u2014 check the slug is correct`);
-    const data = await res.json();
-    incoming = (Array.isArray(data.jobs) ? data.jobs : []).filter(j => j && j.isListed !== false);
+    let url, res, data, rawJobs;
+    if (platform === 'greenhouse') {
+      url = `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(slug)}/jobs?content=true`;
+      res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status} \u2014 check the token is correct`);
+      data = await res.json();
+      // A malformed body (e.g. {"error": "..."}) can still come back as
+      // HTTP 200. Without this check, that would silently be read as
+      // "zero open jobs" and wrongly mark every real cached job as closed
+      // on the next merge \u2014 treat it as a failed fetch instead, which
+      // preserves the last-known-good cache (see the errorMsg branch below).
+      if (!data || !Array.isArray(data.jobs)) throw new Error('Unexpected response shape from Greenhouse (not a fetch failure, but not valid job data either)');
+      // Greenhouse's board endpoint only ever returns currently-published
+      // jobs \u2014 no isListed-style filtering needed, unlike Ashby.
+      rawJobs = data.jobs;
+      incoming = rawJobs.map(normalizeGreenhouseJob);
+    } else {
+      url = `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(slug)}?includeCompensation=true`;
+      res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+      if (!res.ok) throw new Error(`HTTP ${res.status} \u2014 check the slug is correct`);
+      data = await res.json();
+      if (!data || !Array.isArray(data.jobs)) throw new Error('Unexpected response shape from Ashby (not a fetch failure, but not valid job data either)');
+      rawJobs = data.jobs.filter(j => j && j.isListed !== false);
+      incoming = rawJobs.map(normalizeJob);
+    }
   } catch (e) {
     errorMsg = e.name === 'AbortError' ? 'Request timed out' : (e.message || 'Request failed (network/CORS)');
   } finally {
@@ -1178,8 +1251,7 @@ async function fetchCompany(slug) {
   const prevByKey = new Map(prevJobs.map(j => [jobKey(j, slug), j]));
   const seenKeys = new Set();
 
-  const merged = incoming.map(rawJob => {
-    const norm = normalizeJob(rawJob);
+  const merged = incoming.map(norm => {
     const key = jobKey(norm, slug);
     seenKeys.add(key);
     const prev = prevByKey.get(key);
@@ -1265,7 +1337,10 @@ async function refreshAll(slugList) {
     btn.textContent = progressLabel;
     setSidebarRefreshStatus(progressLabel, true);
 
-    await Promise.allSettled(batch.map(slug => fetchCompany(slug)));
+    await Promise.allSettled(batch.map(slug => {
+      const company = companies.find(c => c.slug === slug);
+      return fetchCompany(slug, company ? company.platform : 'ashby');
+    }));
     completedCount = Math.min(i + batch.length, targets.length);
     persistState();
     render();
@@ -1298,57 +1373,120 @@ const JOB_BATCH_SIZE = 200; // job cards rendered per page \u2014 keeps the DOM 
 // so we preserve the entered/URL-decoded case and only compare case-insensitively.
 function companyKey(slug) { return slug.trim().toLowerCase(); }
 
-function parseSlugInput(raw) {
+function parseSlugInput(raw, platformHint) {
   const value = raw.trim().replace(/,+$/, '');
-  if (!value) return '';
+  if (!value) return null;
   if (/^https?:\/\//i.test(value)) {
     try {
       const url = new URL(value);
-      if (url.hostname.toLowerCase() !== 'jobs.ashbyhq.com') return '';
+      const host = url.hostname.toLowerCase();
       const part = url.pathname.split('/').filter(Boolean)[0];
-      return part ? decodeURIComponent(part) : '';
-    } catch (e) { return ''; }
+      if (!part) return null;
+      const slug = decodeURIComponent(part);
+      if (host === 'jobs.ashbyhq.com') return { slug, platform: 'ashby' };
+      if (host === 'boards.greenhouse.io' || host === 'job-boards.greenhouse.io') return { slug, platform: 'greenhouse' };
+      return null;
+    } catch (e) { return null; }
   }
-  return value.replace(/^\/+|\/+$/g, '');
+  const bareSlug = value.replace(/^\/+|\/+$/g, '');
+  if (!bareSlug) return null;
+  // Bare text with no URL defaults to Ashby, matching this tool's original
+  // behavior exactly \u2014 platformHint lets a caller that already knows the
+  // platform (e.g. importing Greenhouse discovery results) override that.
+  return { slug: bareSlug, platform: platformHint || 'ashby' };
 }
 
-// Pulls every jobs.ashbyhq.com URL out of arbitrary pasted text (sheet exports,
-// header rows, trailing commas, junk columns). Falls back to line/comma-split
-// bare slugs if no full URLs are found.
+// Pulls every jobs.ashbyhq.com or boards.greenhouse.io URL out of arbitrary
+// pasted text (sheet exports, header rows, trailing commas, junk columns).
+// Falls back to line/comma-split bare slugs if no full URLs are found.
 function extractCandidates(text) {
-  const urlMatches = text.match(/https?:\/\/jobs\.ashbyhq\.com\/[^\s"',]+/gi) || [];
+  const urlMatches = text.match(
+    /https?:\/\/(jobs\.ashbyhq\.com|boards\.greenhouse\.io|job-boards\.greenhouse\.io)\/[^\s"',]+/gi
+  ) || [];
   if (urlMatches.length > 0) return urlMatches;
   return text.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
 }
 
 function addCompany() {
   const input = document.getElementById('companyInput');
-  const slug = parseSlugInput(input.value);
-  if (!slug) { showToast('Enter a valid Ashby URL or board name.'); return; }
-  if (companies.some(c => companyKey(c.slug) === companyKey(slug))) { showToast('Already tracking that company.'); return; }
-  companies.push({ slug, enabled: true, source: 'manual', addedAt: Date.now() });
+  const parsed = parseSlugInput(input.value);
+  if (!parsed) { showToast('Enter a valid Ashby or Greenhouse URL, or a board name.'); return; }
+  const { slug, platform } = parsed;
+  // Hard block, not just a soft duplicate warning: the job cache is keyed
+  // by slug alone (not slug+platform), so the exact same slug string on
+  // two different platforms would silently overwrite each other's cached
+  // jobs. This differs from the softer name-based duplicate check below \u2014
+  // that one can be overridden later; this one never should be.
+  if (companies.some(c => c.slug === slug && (c.platform || 'ashby') !== platform)) {
+    showToast(`"${slug}" is already tracked on a different platform \u2014 can't add the same slug twice across platforms.`);
+    return;
+  }
+  if (companies.some(c => companyKey(c.slug) === companyKey(slug) && (c.platform || 'ashby') === platform)) {
+    showToast('Already tracking that company.');
+    return;
+  }
+  companies.push({ slug, platform, enabled: true, source: 'manual', addedAt: Date.now() });
   input.value = '';
   persistState();
   render();
-  fetchCompany(slug).then(() => { persistState(); render(); });
+  fetchCompany(slug, platform).then(() => { persistState(); render(); });
 }
 
-function addSlugBatch(rawList, defaultSource) {
-  let added = 0, duplicates = 0, invalid = 0;
+// ---------- cross-platform duplicate detection ----------
+// Same real employer can appear as a separate candidate on each ATS
+// platform (e.g. "notion" on Ashby AND "notion" on Greenhouse). This never
+// auto-merges \u2014 two same-named entries aren't necessarily the same real
+// company \u2014 it flags likely matches so importing skips them by default,
+// with the option to add anyway. Matching is deliberately conservative
+// (exact normalized-name match, not fuzzy) to avoid false alarms.
+function normalizeCompanyIdentity(name) {
+  if (!name) return '';
+  return String(name).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+function findLikelyDuplicates(candidate, existingCompanies) {
+  const candidateIdentity = normalizeCompanyIdentity(candidate.candidateName || candidate.slug || '');
+  if (!candidateIdentity) return [];
+  return existingCompanies.filter(existing => {
+    if ((existing.platform || 'ashby') === (candidate.platform || 'ashby')) return false;
+    const existingIdentity = normalizeCompanyIdentity(existing.candidateName || existing.slug || '');
+    return existingIdentity && existingIdentity === candidateIdentity;
+  });
+}
+
+function addSlugBatch(rawList, defaultSource, defaultPlatform) {
+  let added = 0, duplicates = 0, invalid = 0, crossPlatformSkipped = 0;
   const newSlugs = [];
-  const existing = new Set(companies.map(c => companyKey(c.slug)));
+  const existing = new Set(companies.map(c => companyKey(c.slug) + '|' + (c.platform || 'ashby')));
   const timestamp = Date.now();
 
   rawList.forEach(item => {
     const isRecord = item && typeof item === 'object';
-    const raw = isRecord ? item.slug : item;
-    const slug = parseSlugInput(String(raw || ''));
-    if (!slug) { invalid++; return; }
-    const key = companyKey(slug);
+    // Greenhouse discovery results name the field "token" rather than
+    // "slug" \u2014 accept either so that JSON can be imported directly.
+    const raw = isRecord ? (item.slug || item.token) : item;
+    const itemPlatform = (isRecord && item.platform) || defaultPlatform || 'ashby';
+    const parsed = parseSlugInput(String(raw || ''), itemPlatform);
+    if (!parsed) { invalid++; return; }
+    const { slug, platform } = parsed;
+    // Same hard block as addCompany() \u2014 protects the slug-keyed job cache
+    // from a real collision, not just a soft duplicate warning.
+    if (companies.some(c => c.slug === slug && (c.platform || 'ashby') !== platform)) {
+      crossPlatformSkipped++;
+      return;
+    }
+    const key = companyKey(slug) + '|' + platform;
     if (existing.has(key)) { duplicates++; return; }
+
+    const candidateName = (isRecord && item.candidateName) || slug;
+    const crossPlatformMatches = findLikelyDuplicates({ slug, platform, candidateName }, companies);
+    if (crossPlatformMatches.length > 0) {
+      crossPlatformSkipped++;
+      return;
+    }
 
     companies.push({
       slug,
+      platform,
       enabled: true,
       source: (isRecord && item.source) || defaultSource || 'bulk-paste',
       addedAt: (isRecord && item.addedAt) || timestamp,
@@ -1364,13 +1502,19 @@ function addSlugBatch(rawList, defaultSource) {
   persistState();
   render();
 
-  if (added === 0) { showToast(`Nothing new to add (${duplicates} duplicate${duplicates === 1 ? '' : 's'}${invalid ? `, ${invalid} invalid` : ''}).`); return; }
+  if (added === 0 && crossPlatformSkipped === 0) {
+    showToast(`Nothing new to add (${duplicates} duplicate${duplicates === 1 ? '' : 's'}${invalid ? `, ${invalid} invalid` : ''}).`);
+    return;
+  }
 
-  const summary = `${added} added${duplicates ? `, ${duplicates} duplicate${duplicates === 1 ? '' : 's'} skipped` : ''}${invalid ? `, ${invalid} invalid` : ''}`;
+  let summary = `${added} added`;
+  if (duplicates) summary += `, ${duplicates} duplicate${duplicates === 1 ? '' : 's'} skipped`;
+  if (invalid) summary += `, ${invalid} invalid`;
+  if (crossPlatformSkipped) summary += `, ${crossPlatformSkipped} skipped as likely already tracked on another platform`;
 
   if (added <= AUTO_REFRESH_IMPORT_LIMIT) {
-    showToast(summary + ' \u2014 fetching now...');
-    refreshAll(newSlugs);
+    showToast(summary + (added > 0 ? ' \u2014 fetching now...' : ''));
+    if (added > 0) refreshAll(newSlugs);
   } else {
     showToast(summary + ' \u2014 click Refresh all when ready (large import, not auto-fetched).');
   }
@@ -1451,7 +1595,7 @@ function importCompanies(file) {
       const parsed = JSON.parse(e.target.result);
       const list = Array.isArray(parsed) ? parsed : parsed.companies;
       if (!Array.isArray(list)) throw new Error('bad format');
-      const validCount = list.filter(c => (typeof c === 'string' && c) || (c && typeof c === 'object' && c.slug)).length;
+      const validCount = list.filter(c => (typeof c === 'string' && c) || (c && typeof c === 'object' && (c.slug || c.token))).length;
       if (!confirm(`Import ${validCount} companies? This merges with your current list.`)) return;
       if (parsed.savedFilters && Array.isArray(parsed.savedFilters)) {
         let skipped = 0;
@@ -2028,6 +2172,11 @@ function renderSidebar() {
     name.addEventListener('click', () => { companyFilter = companyFilter === c.slug ? null : c.slug; render(); });
     row.appendChild(name);
 
+    const rowBadge = document.createElement('div');
+    rowBadge.className = 'platform-badge platform-badge-' + (c.platform || 'ashby');
+    rowBadge.textContent = (c.platform || 'ashby') === 'greenhouse' ? 'GH' : 'AB';
+    row.appendChild(rowBadge);
+
     const count = document.createElement('div');
     count.className = 'company-row-count';
     count.textContent = entry ? entry.jobs.filter(j => j.status !== 'closed').length : '\u2013';
@@ -2361,6 +2510,11 @@ function buildCompanyCard(c) {
   name.className = 'company-card-name';
   name.textContent = c.slug;
   header.appendChild(name);
+  const platformBadge = document.createElement('div');
+  platformBadge.className = 'platform-badge platform-badge-' + (c.platform || 'ashby');
+  platformBadge.textContent = (c.platform || 'ashby') === 'greenhouse' ? 'GH' : 'AB';
+  platformBadge.title = (c.platform || 'ashby') === 'greenhouse' ? 'Greenhouse' : 'Ashby';
+  header.appendChild(platformBadge);
   card.appendChild(header);
 
   const meta = document.createElement('div');
